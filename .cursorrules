@@ -1,0 +1,211 @@
+# Farmers Loan Facilitator System - Project Intelligence
+
+## Project Overview
+This is a comprehensive multi-role platform for facilitating loans to Ethiopian farmers. The system supports four distinct user types with different interfaces and workflows.
+
+## Key User Roles
+1. **Farmers** - Access via USSD (*789#) and mobile web interface
+2. **Data Collectors** - Field agents who register and verify farmer data
+3. **Financial Institutions** - Loan officers who review applications and manage portfolios
+4. **System Administrators** - Manage users and system configuration
+
+## Technology Stack
+- **Frontend**: React 19 + TypeScript + Vite
+- **Routing**: TanStack Router (type-safe, file-based)
+- **State Management**: Zustand + TanStack Query
+- **UI**: Radix UI + Tailwind CSS
+- **Internationalization**: i18next (English, Amharic, Afaan Oromoo)
+
+## Architecture Patterns
+
+### Feature-Based Organization
+- Each feature is self-contained in `src/features/`
+- Features include: components/, layouts/, pages/, api.ts, routes.ts
+- Shared functionality goes in `src/core/`
+- Use `@features/` and `@core/` path aliases
+
+### Authentication Pattern
+- Role-based access control with JWT tokens
+- Different login flows per user role
+- Protected routes based on user roles
+- Store authentication state in Zustand
+
+### Routing Pattern
+- Use TanStack Router with nested routes
+- Feature routes are functions that return route configurations
+- Implement route protection with `beforeLoad`
+- Use layouts to wrap feature pages
+
+### Component Patterns
+- Use Radix UI primitives for accessibility
+- Implement controlled forms with validation
+- Use TypeScript for all components
+- Follow mobile-first responsive design
+
+## Development Preferences
+
+### File Naming
+- Use kebab-case for file names: `login-form.tsx`
+- Use PascalCase for component names: `LoginForm`
+- Use camelCase for functions and variables
+- Use UPPER_SNAKE_CASE for constants
+
+### Code Organization
+- Group related functionality in feature folders
+- Keep components small and focused
+- Use TypeScript interfaces for all data structures
+- Implement proper error handling and loading states
+
+### State Management
+- Use Zustand for global state (auth, UI, feature-specific)
+- Use React useState for local component state
+- Use TanStack Query for server state
+- Implement optimistic updates where appropriate
+
+### API Patterns
+- Create feature-specific API modules
+- Use centralized API client with axios
+- Implement consistent error handling
+- Use TypeScript for API response types
+
+## User Experience Guidelines
+
+### Multi-Language Support
+- Support English, Amharic, and Afaan Oromoo
+- Use i18next namespaces for feature organization
+- Implement language switching functionality
+- Consider right-to-left text support
+
+### Responsive Design
+- Mobile-first approach with Tailwind CSS
+- Support USSD, mobile web, tablet, and desktop
+- Ensure accessibility compliance (WCAG 2.1 AA)
+- Optimize for slow internet connections
+
+### Offline Capabilities
+- Implement service worker for offline support
+- Use IndexedDB for local data storage
+- Implement conflict resolution for offline changes
+- Provide clear offline/online status indicators
+
+## Critical Implementation Paths
+
+### 1. User Role System
+- Extend AppUser interface to support multiple roles
+- Implement role-based authentication flows
+- Create role-specific layouts and navigation
+- Add route protection based on user roles
+
+### 2. USSD Interface
+- Create interactive USSD simulator
+- Implement menu navigation and user input
+- Handle session management and state
+- Support basic mobile phones without internet
+
+### 3. Offline Sync
+- Implement service worker for offline functionality
+- Use IndexedDB for local data storage
+- Create sync queue for offline changes
+- Handle conflict resolution and data merging
+
+### 4. Multi-Platform Support
+- Ensure responsive design works on all devices
+- Optimize for different screen sizes and input methods
+- Implement touch-friendly interfaces for mobile
+- Support both portrait and landscape orientations
+
+## Known Challenges
+
+### 1. Complex User Journeys
+- Each user role has very different workflows
+- Need to support both simple (USSD) and complex (web) interfaces
+- Must handle users with varying technical literacy
+
+### 2. Offline-First Architecture
+- Data collectors work in areas with poor connectivity
+- Need sophisticated offline sync capabilities
+- Must handle data conflicts and synchronization
+
+### 3. Multi-Language Complexity
+- Support for three languages with different scripts
+- Need to handle right-to-left text
+- Must consider cultural differences in UI design
+
+### 4. Security and Privacy
+- Handle sensitive financial and personal data
+- Implement secure offline data storage
+- Ensure data protection compliance
+
+## Development Workflow
+
+### Feature Development
+1. Create feature folder structure
+2. Define TypeScript interfaces
+3. Implement API layer
+4. Create UI components
+5. Add routing and navigation
+6. Implement state management
+7. Add internationalization
+8. Test across different devices
+
+### Code Quality
+- Use TypeScript for type safety
+- Follow ESLint rules for code consistency
+- Implement proper error handling
+- Add loading states for better UX
+- Write accessible components
+
+### Testing Strategy
+- Test on multiple devices and screen sizes
+- Verify offline functionality
+- Test multi-language support
+- Validate accessibility compliance
+- Test with different user roles
+
+## Performance Considerations
+
+### Bundle Optimization
+- Use code splitting for feature-based loading
+- Implement lazy loading for routes
+- Optimize images and assets
+- Minimize bundle size for mobile users
+
+### Caching Strategy
+- Cache API responses with TanStack Query
+- Implement service worker caching
+- Use localStorage for user preferences
+- Cache static assets for offline access
+
+### Mobile Optimization
+- Minimize network requests
+- Optimize for slow connections
+- Implement progressive loading
+- Use efficient data structures
+
+## Security Best Practices
+
+### Authentication
+- Implement secure JWT token handling
+- Use HTTPS for all API communications
+- Implement proper session management
+- Add rate limiting for API endpoints
+
+### Data Protection
+- Encrypt sensitive data in storage
+- Implement secure offline data handling
+- Use secure communication protocols
+- Follow data protection regulations
+
+## Deployment Considerations
+
+### Progressive Web App
+- Implement service worker for offline support
+- Add app manifest for mobile installation
+- Optimize for mobile performance
+- Ensure fast loading times
+
+### Multi-Environment Support
+- Support development, staging, and production
+- Use environment variables for configuration
+- Implement proper error monitoring
+- Add analytics and performance tracking

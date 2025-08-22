@@ -1,0 +1,40 @@
+<svg width="1200" height="630" viewBox="0 0 1200 630" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Content Discovery Placeholder">
+  <defs>
+    <!-- Gradient built from #258898 (mid), a darker and a lighter tint -->
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#136570"/>
+      <stop offset="55%" stop-color="#258898"/>
+      <stop offset="100%" stop-color="#6FC2CF"/>
+    </linearGradient>
+
+    <!-- Soft grainy dots pattern -->
+    <radialGradient id="dot" cx="50%" cy="50%" r="0.5">
+      <stop offset="0%" stop-color="rgba(255,255,255,0.35)"/>
+      <stop offset="100%" stop-color="rgba(255,255,255,0)"/>
+    </radialGradient>
+    <pattern id="dots" width="120" height="120" patternUnits="userSpaceOnUse">
+      <circle cx="20" cy="20" r="2.2" fill="url(#dot)"/>
+      <circle cx="80" cy="50" r="1.6" fill="url(#dot)"/>
+      <circle cx="55" cy="95" r="2.0" fill="url(#dot)"/>
+      <circle cx="100" cy="15" r="1.8" fill="url(#dot)"/>
+    </pattern>
+
+    <!-- Reusable card shape -->
+    <filter id="blur" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="30"/>
+    </filter>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1200" height="630" rx="32" fill="url(#bg)"/>
+
+  <!-- Ambient blobs -->
+  <g opacity="0.25" filter="url(#blur)">
+    <circle cx="950" cy="120" r="140" fill="#6FC2CF"/>
+    <circle cx="260" cy="520" r="170" fill="#136570"/>
+  </g>
+
+  <!-- Dot texture -->
+  <rect width="1200" height="630" rx="32" fill="url(#dots)" opacity="0.35"/>
+
+</svg>
