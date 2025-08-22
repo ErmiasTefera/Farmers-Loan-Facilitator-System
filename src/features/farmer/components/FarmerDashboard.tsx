@@ -8,11 +8,8 @@ import type { PaymentData, LoanSummaryData } from '@/components/shared';
 import { 
   TrendingUp, 
   AlertCircle, 
-  Smartphone,
   FileText,
-  CreditCard,
-  Info,
-  Calendar
+  Info
 } from 'lucide-react';
 
 interface DashboardData {
@@ -210,7 +207,7 @@ export const FarmerDashboard: React.FC = () => {
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              {dashboardData.notifications.map((notification: any) => (
+              {dashboardData.notifications.map((notification: { id: string; message: string; urgent: boolean }) => (
                 <div key={notification.id} className={`flex items-start space-x-3 p-3 rounded-lg ${
                   notification.urgent ? 'bg-red-50 border border-red-200' : 'bg-gray-50'
                 }`}>

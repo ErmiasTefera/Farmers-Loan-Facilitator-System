@@ -1,10 +1,6 @@
 import React from 'react';
-import { useAuthStore } from '@/core/store/authStore';
-import { Button } from '@/components/ui/button';
 import { useTranslation } from 'react-i18next';
-import { LogOut, User } from 'lucide-react';
 import LanguageSelector from './LanguageSelector';
-import ThemeToggle from './ThemeToggle';
 import { AuthStatus } from '@/features/auth/components/AuthStatus';
 
 /**
@@ -76,12 +72,7 @@ export const TopNavigation: React.FC<TopNavigationProps> = ({
   logoIcon,
   className = "" 
 }) => {
-  const { user, logout } = useAuthStore();
   const { t } = useTranslation();
-
-  const handleLogout = async () => {
-    await logout();
-  };
 
   const displayTitle = titleKey ? t(titleKey) : title;
   const logoColorClass = roleColors[userRole];
