@@ -51,8 +51,8 @@ export const UserAvatar: React.FC<UserAvatarProps> = ({
 	if (!showDropdown) {
 		return (
 			<Avatar className={className}>
-				<AvatarImage src="" alt={user.name} />
-				<AvatarFallback>{getInitials(user.name)}</AvatarFallback>
+				<AvatarImage src="" alt={user.full_name} />
+				<AvatarFallback>{getInitials(user.full_name)}</AvatarFallback>
 			</Avatar>
 		);
 	}
@@ -62,11 +62,11 @@ export const UserAvatar: React.FC<UserAvatarProps> = ({
 			<DropdownMenuTrigger asChild>
 				<button className="flex items-center gap-2 rounded-md p-2 hover:bg-accent transition-colors" aria-label={t('auth.profile')}>
 					<Avatar className="size-8">
-						<AvatarImage src="" alt={user.name} />
-						<AvatarFallback>{getInitials(user.name)}</AvatarFallback>
+						<AvatarImage src="" alt={user.full_name} />
+						<AvatarFallback>{getInitials(user.full_name)}</AvatarFallback>
 					</Avatar>
 					<div className="hidden sm:flex flex-col items-start text-sm">
-						<span className="font-medium">{user.name}</span>
+						<span className="font-medium">{user.full_name}</span>
 						<span className="text-muted-foreground">{user.email}</span>
 					</div>
 					<ChevronDown className="size-4 text-muted-foreground" />
@@ -75,7 +75,7 @@ export const UserAvatar: React.FC<UserAvatarProps> = ({
 			<DropdownMenuContent align="end" className="w-56">
 				<DropdownMenuLabel>
 					<div className="flex flex-col space-y-1">
-						<p className="text-sm font-medium leading-none">{user.name}</p>
+						<p className="text-sm font-medium leading-none">{user.full_name}</p>
 						<p className="text-xs leading-none text-muted-foreground">
 							{user.email}
 						</p>
@@ -94,7 +94,7 @@ export const UserAvatar: React.FC<UserAvatarProps> = ({
 					<LogoutButton 
 						variant="ghost" 
 						size="sm" 
-						showConfirmation={false}
+						showConfirmation={true}
 						className="w-full justify-start h-auto p-0"
 					>
 						{t('auth.logout')}

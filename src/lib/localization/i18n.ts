@@ -3,6 +3,8 @@ import i18n from 'i18next'
 import { initReactI18next } from 'react-i18next'
 import { common } from './i18n.common'
 import { auth } from './i18n.auth'
+import { ussdTranslations } from './i18n.ussd'
+import { farmer } from './i18n.farmer'
 
 const resources = {
   en: {
@@ -11,6 +13,10 @@ const resources = {
       auth: {
         ...auth.en,
       },
+      ...ussdTranslations.en,
+      farmer: {
+        ...farmer.en,
+      },
     },
   },
   am: {
@@ -18,6 +24,10 @@ const resources = {
       ...common.en,
       auth: {
         ...auth.am,
+      },
+      ...ussdTranslations.am,
+      farmer: {
+        ...farmer.am,
       },
     },
   },

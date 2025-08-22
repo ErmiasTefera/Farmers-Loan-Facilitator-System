@@ -11,6 +11,7 @@ This is a comprehensive multi-role platform for facilitating loans to Ethiopian 
 
 ## Technology Stack
 - **Frontend**: React 19 + TypeScript + Vite
+- **Backend**: Supabase (PostgreSQL + Auth + Real-time)
 - **Routing**: TanStack Router (type-safe, file-based)
 - **State Management**: Zustand + TanStack Query
 - **UI**: Radix UI + Tailwind CSS
@@ -25,10 +26,12 @@ This is a comprehensive multi-role platform for facilitating loans to Ethiopian 
 - Use `@features/` and `@core/` path aliases
 
 ### Authentication Pattern
-- Role-based access control with JWT tokens
+- Supabase authentication with role-based access control
+- JWT token management through Supabase
 - Different login flows per user role
 - Protected routes based on user roles
-- Store authentication state in Zustand
+- Row Level Security (RLS) policies for data protection
+- Store authentication state in Zustand with Supabase session sync
 
 ### Routing Pattern
 - Use TanStack Router with nested routes
@@ -62,11 +65,13 @@ This is a comprehensive multi-role platform for facilitating loans to Ethiopian 
 - Use TanStack Query for server state
 - Implement optimistic updates where appropriate
 
-### API Patterns
-- Create feature-specific API modules
-- Use centralized API client with axios
-- Implement consistent error handling
-- Use TypeScript for API response types
+### Supabase Integration Patterns
+- Create feature-specific API modules using Supabase client
+- Use centralized Supabase client configuration
+- Implement consistent error handling for Supabase operations
+- Use TypeScript for database types and API response types
+- Implement real-time subscriptions for live data updates
+- Use Row Level Security (RLS) for data access control
 
 ## User Experience Guidelines
 
@@ -90,11 +95,13 @@ This is a comprehensive multi-role platform for facilitating loans to Ethiopian 
 
 ## Critical Implementation Paths
 
-### 1. User Role System
+### 1. Supabase Integration & User Role System
+- Set up Supabase project and database schema
 - Extend AppUser interface to support multiple roles
-- Implement role-based authentication flows
+- Implement role-based authentication flows with Supabase
 - Create role-specific layouts and navigation
 - Add route protection based on user roles
+- Implement Row Level Security (RLS) policies
 
 ### 2. USSD Interface
 - Create interactive USSD simulator
@@ -185,16 +192,18 @@ This is a comprehensive multi-role platform for facilitating loans to Ethiopian 
 ## Security Best Practices
 
 ### Authentication
-- Implement secure JWT token handling
-- Use HTTPS for all API communications
-- Implement proper session management
-- Add rate limiting for API endpoints
+- Use Supabase built-in authentication with JWT tokens
+- Implement secure session management with Supabase
+- Use Row Level Security (RLS) for data access control
+- Add rate limiting through Supabase Edge Functions
+- Implement proper error handling for auth operations
 
 ### Data Protection
-- Encrypt sensitive data in storage
-- Implement secure offline data handling
-- Use secure communication protocols
-- Follow data protection regulations
+- Use Supabase's built-in encryption for data at rest
+- Implement secure offline data handling with encryption
+- Use Supabase's secure communication protocols
+- Follow data protection regulations with RLS policies
+- Implement proper data backup and recovery procedures
 
 ## Deployment Considerations
 

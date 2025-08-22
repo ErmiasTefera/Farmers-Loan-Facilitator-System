@@ -17,6 +17,15 @@ export const APP_ROUTES = {
         roles: '/user-management/roles',
         permissions: '/user-management/permissions',
 	},
+	FARMER: {
+		root: '/farmer',
+		ussd: '/farmer/ussd',
+		dashboard: '/farmer/dashboard',
+		loans: '/farmer/loans',
+		loanDetails: '/farmer/loans/$loanId',
+		applyLoan: '/farmer/apply-loan',
+		checkEligibility: '/farmer/check-eligibility'
+	},
     HARVESTING: {
         root: '/harvesting',
     },

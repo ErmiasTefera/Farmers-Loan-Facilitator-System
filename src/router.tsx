@@ -5,6 +5,7 @@ import { createRouter, RouterProvider, createRootRoute, Outlet } from '@tanstack
 import { userManagementRoutes } from '@features/user-management/user-management.routes';
 import { authRoutes } from '@features/auth/auth.routes';
 import { homeRoutes } from '@features/home/home.routes';
+import { farmerRoutes } from '@features/farmer/farmer.routes';
 
 // Root route
 const rootRoute = createRootRoute({
@@ -16,6 +17,7 @@ rootRoute.addChildren([
 	homeRoutes(rootRoute),
 	userManagementRoutes(rootRoute),
 	authRoutes(rootRoute),
+	farmerRoutes(rootRoute),
 ]);
 
 const router = createRouter({ routeTree: rootRoute });

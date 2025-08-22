@@ -4,10 +4,12 @@ import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { APP_ROUTES } from "@/core/constants/routes.constant"
 import { useAuthStore } from "@/core/store/authStore"
 import { DEMO_CREDENTIALS } from "@/features/auth/auth.api"
 import { useTranslation } from 'react-i18next'
+import type { UserRole } from '@/core/types/database.types'
 
 export function LoginForm({
   className,
@@ -17,6 +19,7 @@ export function LoginForm({
   const { login, isLoading, error, clearError } = useAuthStore();
   const [email, setEmail] = useState(DEMO_CREDENTIALS.email);
   const [password, setPassword] = useState(DEMO_CREDENTIALS.password);
+  const [role, setRole] = useState<UserRole>(DEMO_CREDENTIALS.role);
   const { t } = useTranslation();
 
   // Clear error when component mounts
@@ -26,7 +29,7 @@ export function LoginForm({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log('LoginPage - Form submitted:', { email, password });
+    console.log('LoginPage - Form submitted:', { email, password, role });
     
     const result = await login(email, password);
     console.log('LoginPage - Login result:', result);
@@ -37,6 +40,8 @@ export function LoginForm({
       navigate({ to: APP_ROUTES.DISCOVERY.root });
     }
   };
+
+
 
   return (
     <form className={cn("flex flex-col gap-6", className)} onSubmit={handleSubmit} {...props}>
@@ -63,42 +68,56 @@ export function LoginForm({
         </div>
       )}
 
-      <div className="grid gap-6">
-        <div className="grid gap-3">
-          <Label htmlFor="email">{t('auth.email')}</Label>
-          <Input 
-            id="email" 
-            type="email" 
-            placeholder={t('auth.emailPlaceholder')}
-            aria-label={t('auth.email')}
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required 
-          />
-        </div>
-        <div className="grid gap-3">
-          <div className="flex items-center">
-            <Label htmlFor="password">{t('auth.password')}</Label>
-            <a
-              href={APP_ROUTES.AUTH.forgotPassword}
-              className="ml-auto text-sm underline-offset-4 hover:underline"
-            >
-              {t('auth.forgotPasswordQuestion')}
-            </a>
+              <div className="grid gap-6">
+          <div className="grid gap-3">
+            <Label htmlFor="email">{t('auth.email')}</Label>
+            <Input 
+              id="email" 
+              type="email" 
+              placeholder={t('auth.emailPlaceholder')}
+              aria-label={t('auth.email')}
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required 
+            />
           </div>
-          <Input 
-            id="password" 
-            type="password" 
-            aria-label={t('auth.password')}
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required 
-          />
+          <div className="grid gap-3">
+            <Label htmlFor="role">{t('auth.loginAs')}</Label>
+            <Select value={role} onValueChange={(value: UserRole) => setRole(value)}>
+              <SelectTrigger>
+                <SelectValue placeholder={t('auth.selectRole')} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="farmer">{t('auth.roles.farmer')}</SelectItem>
+                <SelectItem value="data-collector">{t('auth.roles.dataCollector')}</SelectItem>
+                <SelectItem value="loan-officer">{t('auth.roles.loanOfficer')}</SelectItem>
+                <SelectItem value="admin">{t('auth.roles.admin')}</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="grid gap-3">
+            <div className="flex items-center">
+              <Label htmlFor="password">{t('auth.password')}</Label>
+              <a
+                href={APP_ROUTES.AUTH.forgotPassword}
+                className="ml-auto text-sm underline-offset-4 hover:underline"
+              >
+                {t('auth.forgotPasswordQuestion')}
+              </a>
+            </div>
+            <Input 
+              id="password" 
+              type="password" 
+              aria-label={t('auth.password')}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required 
+            />
+          </div>
+          <Button type="submit" className="w-full" disabled={isLoading} aria-label={isLoading ? t('auth.loggingIn') : t('auth.login')}>
+            {isLoading ? t('auth.loggingIn') : t('auth.login')}
+          </Button>
         </div>
-        <Button type="submit" className="w-full" disabled={isLoading} aria-label={isLoading ? t('auth.loggingIn') : t('auth.login')}>
-          {isLoading ? t('auth.loggingIn') : t('auth.login')}
-        </Button>
-      </div>
       <div className="text-center text-sm">
         {t('auth.dontHaveAnAccount')} {" "}
         <a href={APP_ROUTES.AUTH.signup} className="underline underline-offset-4">

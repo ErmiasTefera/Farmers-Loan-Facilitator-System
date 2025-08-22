@@ -27,8 +27,16 @@
 - **ESLint 9.33.0** - Code linting with TypeScript support
 - **TypeScript ESLint 8.39.1** - TypeScript-specific linting rules
 
+### Backend & Database
+- **Supabase** - Backend-as-a-Service for authentication and database
+  - PostgreSQL database with real-time subscriptions
+  - Built-in authentication with multiple providers
+  - Row Level Security (RLS) for data protection
+  - Storage for file uploads and documents
+  - Edge Functions for serverless computing
+
 ### Additional Libraries
-- **Axios 1.11.0** - HTTP client
+- **@supabase/supabase-js** - Supabase JavaScript client
 - **QRCode 1.5.4** - QR code generation
 - **RxJS 7.8.2** - Reactive programming utilities
 
@@ -91,13 +99,15 @@ src/
 - Feature-based routing architecture
 
 ### ❌ Not Yet Implemented
+- Supabase integration and configuration
+- Database schema design and implementation
+- Real-time subscriptions for notifications
 - USSD simulator interface
 - Farmer mobile dashboard
 - Data collector workspace
 - Financial institution workspace
 - System administrator workspace
 - Offline sync capabilities
-- Real-time notifications
 - AI-powered recommendations
 - Comprehensive reporting and analytics
 
@@ -109,9 +119,10 @@ src/
 - Shared functionality is placed in `@core/` modules
 
 ### Authentication Pattern
-- Role-based access control
-- JWT token management
+- Supabase authentication with role-based access control
+- JWT token management through Supabase
 - Protected routes based on user roles
+- Row Level Security (RLS) policies for data protection
 
 ### Routing Pattern
 - File-based routing with TanStack Router

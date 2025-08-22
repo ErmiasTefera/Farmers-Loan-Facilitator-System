@@ -14,7 +14,7 @@ export function SignupForm({
   ...props
 }: React.ComponentProps<"form">) {
   const navigate = useNavigate();
-  const { setUser, setToken, clearError } = useAuthStore();
+  const { setUser, setSession, clearError } = useAuthStore();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -43,9 +43,9 @@ export function SignupForm({
     try {
       const response = await authAPI.signup(name, email, password);
       
-      if (response.success && response.user && response.token) {
+      if (response.success && response.user && response.session) {
         setUser(response.user);
-        setToken(response.token);
+        setSession(response.session);
         // Use proper navigation instead of window.location.href
         navigate({ to: APP_ROUTES.DISCOVERY.root });
       } else {

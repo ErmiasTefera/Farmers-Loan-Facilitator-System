@@ -28,7 +28,7 @@
 - **Zustand Stores**: Centralized state management
   - Auth Store: User authentication state
   - UI Store: Theme and UI state
-- **API Integration**: Mock API with proper error handling
+- **API Integration**: Mock API with proper error handling (to be replaced with Supabase)
 - **Loading States**: Consistent loading state management
 
 ### Internationalization
@@ -83,7 +83,7 @@
 - **Configuration Management**: System settings and configuration
 
 ### 6. Advanced Features (Medium Priority)
-- **Real-time Notifications**: Live updates and alerts
+- **Real-time Notifications**: Supabase real-time subscriptions for live updates
 - **Offline Capabilities**: Service worker and offline storage
 - **Data Synchronization**: Conflict resolution for offline changes
 - **AI Integration**: Machine learning for risk assessment
@@ -96,11 +96,14 @@
 - **Progressive Web App**: PWA capabilities for mobile
 - **QR Code Integration**: QR codes for easy access
 
-### 8. Data Models & API (High Priority)
+### 8. Supabase Integration & Data Models (High Priority)
+- **Supabase Setup**: Project configuration and environment setup
+- **Database Schema**: Design and implement PostgreSQL tables
 - **Farmer Data Model**: Complete farmer profile structure
 - **Loan Data Model**: Loan application and status tracking
 - **Payment Data Model**: Payment and repayment tracking
-- **Real API Integration**: Replace mock APIs with real endpoints
+- **Row Level Security**: Implement RLS policies for data protection
+- **Real-time Subscriptions**: Live data updates and notifications
 - **Data Validation**: Comprehensive form validation
 
 ### 9. Security & Performance (Medium Priority)
@@ -158,7 +161,10 @@
 
 ## Next Milestone Goals
 
-### Milestone 1: User Role System (Week 1-2)
+### Milestone 1: Supabase Integration & User Role System (Week 1-2)
+- [ ] Set up Supabase project and environment
+- [ ] Create database schema and RLS policies
+- [ ] Replace mock auth with Supabase authentication
 - [ ] Extend user types to support all roles
 - [ ] Implement role-based authentication
 - [ ] Create role-specific layouts

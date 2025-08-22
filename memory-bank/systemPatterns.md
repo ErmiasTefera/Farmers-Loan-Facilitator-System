@@ -53,13 +53,31 @@ export const useAuthStore = create<AuthStore>((set) => ({
 }));
 ```
 
-### 2. API Layer Pattern
+### 2. Supabase API Layer Pattern
 ```typescript
-// Feature-specific API with centralized client
+// Feature-specific API using Supabase client
+import { supabase } from '@/core/api/supabase-client';
+
 export const authAPI = {
-  login: async (email: string, password: string) => { /* implementation */ },
-  signup: async (name: string, email: string, password: string) => { /* implementation */ },
-  logout: async () => { /* implementation */ }
+  login: async (email: string, password: string) => {
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password
+    });
+    return { success: !error, data, error };
+  },
+  signup: async (name: string, email: string, password: string) => {
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: { data: { name } }
+    });
+    return { success: !error, data, error };
+  },
+  logout: async () => {
+    const { error } = await supabase.auth.signOut();
+    return { success: !error, error };
+  }
 };
 ```
 
@@ -178,39 +196,81 @@ const protectedRoute = createRoute({
 });
 ```
 
-## API Patterns
+## Supabase Integration Patterns
 
-### 1. Centralized API Client
+### 1. Supabase Client Configuration
 ```typescript
-// Single API client for all requests
-export const apiClient = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL,
-  timeout: 10000,
-});
+// Centralized Supabase client
+import { createClient } from '@supabase/supabase-js';
+
+export const supabase = createClient(
+  import.meta.env.VITE_SUPABASE_URL,
+  import.meta.env.VITE_SUPABASE_ANON_KEY
+);
 ```
 
-### 2. Feature-Specific API Modules
+### 2. Database Operations Pattern
 ```typescript
-// Each feature has its own API module
-export const authAPI = {
-  login: (email: string, password: string) => 
-    apiClient.post('/auth/login', { email, password }),
-  // ... other auth endpoints
+// Feature-specific database operations
+export const farmerAPI = {
+  getFarmers: async () => {
+    const { data, error } = await supabase
+      .from('farmers')
+      .select('*')
+      .order('created_at', { ascending: false });
+    return { success: !error, data, error };
+  },
+  
+  createFarmer: async (farmerData) => {
+    const { data, error } = await supabase
+      .from('farmers')
+      .insert(farmerData)
+      .select()
+      .single();
+    return { success: !error, data, error };
+  }
 };
 ```
 
-### 3. Error Handling Pattern
+### 3. Real-time Subscriptions Pattern
 ```typescript
-// Consistent error handling across the application
-try {
-  const response = await apiClient.post('/endpoint', data);
-  return { success: true, data: response.data };
-} catch (error) {
-  return { 
-    success: false, 
-    error: error.response?.data?.message || 'Network error' 
-  };
-}
+// Real-time data subscriptions
+export const useRealtimeFarmers = () => {
+  const [farmers, setFarmers] = useState([]);
+  
+  useEffect(() => {
+    const subscription = supabase
+      .channel('farmers_changes')
+      .on('postgres_changes', 
+        { event: '*', schema: 'public', table: 'farmers' },
+        (payload) => {
+          // Handle real-time updates
+          console.log('Change received!', payload);
+        }
+      )
+      .subscribe();
+    
+    return () => subscription.unsubscribe();
+  }, []);
+  
+  return farmers;
+};
+```
+
+### 4. Row Level Security (RLS) Pattern
+```sql
+-- Example RLS policy for farmers table
+CREATE POLICY "Users can view their own data" ON farmers
+  FOR SELECT USING (auth.uid() = user_id);
+
+CREATE POLICY "Data collectors can view assigned farmers" ON farmers
+  FOR SELECT USING (
+    EXISTS (
+      SELECT 1 FROM user_assignments 
+      WHERE collector_id = auth.uid() 
+      AND farmer_id = farmers.id
+    )
+  );
 ```
 
 ## Internationalization Pattern
@@ -270,12 +330,13 @@ const Dashboard = () => (
 
 ## Security Patterns
 
-### 1. Authentication Flow
+### 1. Supabase Authentication Flow
 1. User submits credentials
-2. Server validates and returns JWT token
-3. Token stored in Zustand store
-4. Token included in subsequent API requests
-5. Protected routes check for valid token
+2. Supabase validates and returns JWT token
+3. Token stored in Zustand store and Supabase session
+4. Supabase client automatically includes token in requests
+5. Protected routes check for valid Supabase session
+6. Row Level Security (RLS) policies enforce data access
 
 ### 2. Role-Based Access Control
 ```typescript
