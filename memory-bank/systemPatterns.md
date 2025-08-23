@@ -2,7 +2,7 @@
 
 ## Architecture Overview
 
-The Farmers Loan Facilitator System follows a **Feature-Based Architecture** with clear separation of concerns and modular design.
+The Farmers Loan Facilitator System follows a **Feature-Based Architecture** with clear separation of concerns and modular design, enhanced with advanced patterns for user impersonation, offline capabilities, and proper loan-payment relationships.
 
 ## Core Architectural Patterns
 
@@ -16,7 +16,17 @@ features/
 │   ├── auth.api.ts        # Feature API layer
 │   └── auth.routes.ts     # Feature routing
 ├── farmer/                 # Farmer-specific features
+│   ├── components/        # USSD simulator, dashboard, loan management
+│   ├── layouts/           # Farmer-specific layouts
+│   ├── pages/             # Farmer pages
+│   ├── farmer.api.ts      # Farmer API layer
+│   └── farmer.routes.ts   # Farmer routing
 ├── data-collector/         # Data collector workspace
+│   ├── components/        # Registration, verification, offline sync
+│   ├── layouts/           # Collector-specific layouts
+│   ├── pages/             # Collector pages
+│   ├── data-collector.api.ts # Collector API layer
+│   └── data-collector.routes.ts # Collector routing
 ├── financial-institution/  # Financial institution workspace
 └── admin/                  # System administration
 ```
@@ -25,13 +35,28 @@ features/
 ```
 core/
 ├── api/                   # Centralized API management
+│   ├── client.ts         # Supabase client configuration
+│   ├── queryClient.ts    # TanStack Query configuration
+│   └── supabase-client.ts # Supabase client instance
 ├── components/            # Shared UI components
+│   ├── auth/             # Authentication components
+│   ├── shared/           # Reusable components (loans, payments, etc.)
+│   └── TopNavigation.tsx # Shared navigation with role switcher
 ├── constants/             # Application constants
 ├── hooks/                 # Custom React hooks
+│   ├── useRoleState.ts   # Role state management
+│   ├── useImpersonation.ts # Impersonation utilities
+│   └── useTheme.ts       # Theme management
 ├── layouts/               # Shared layout components
 ├── models/                # Data models and types
 ├── store/                 # Global state management
+│   ├── authStore.ts      # Authentication state
+│   ├── uiStore.ts        # UI state
+│   ├── roleStore.ts      # Role state
+│   ├── impersonationStore.ts # Impersonation state
+│   └── offlineStore.ts   # Offline state and sync
 ├── types/                 # TypeScript type definitions
+│   └── database.types.ts # Supabase database types
 └── utils/                 # Utility functions
 ```
 
@@ -51,6 +76,25 @@ export const useAuthStore = create<AuthStore>((set) => ({
   logout: async () => { /* implementation */ },
   clearError: () => set({ error: null })
 }));
+
+// Impersonation store for testing
+export const useImpersonationStore = create<ImpersonationState>()(
+  persist(
+    (set, get) => ({
+      isImpersonating: false,
+      impersonatedUser: null,
+      availableUsers: {},
+      loading: false,
+      error: null,
+      
+      startImpersonation: (user) => set({ isImpersonating: true, impersonatedUser: user }),
+      stopImpersonation: () => set({ isImpersonating: false, impersonatedUser: null }),
+      loadUsersForRole: async (role) => { /* implementation */ },
+      switchRoleAndSelectFirst: async (role) => { /* implementation */ }
+    }),
+    { name: 'impersonation-storage' }
+  )
+);
 ```
 
 ### 2. Supabase API Layer Pattern
@@ -58,25 +102,42 @@ export const useAuthStore = create<AuthStore>((set) => ({
 // Feature-specific API using Supabase client
 import { supabase } from '@/core/api/supabase-client';
 
-export const authAPI = {
-  login: async (email: string, password: string) => {
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password
-    });
-    return { success: !error, data, error };
+export const farmerAPI = {
+  // Loan application management with proper relationships
+  async getDashboardData(farmerId: string) {
+    const [payments, loanApplications, eligibility] = await Promise.all([
+      this.getPaymentsByFarmer(farmerId),
+      this.getLoanApplicationsByFarmer(farmerId),
+      this.checkEligibility(farmerId)
+    ]);
+
+    // Link payments to loan applications
+    const activeLoan = loanApplications.find(app => app.status === 'approved');
+    if (activeLoan) {
+      const loanPayments = payments.filter(payment => 
+        payment.loan_application_id === activeLoan.id || 
+        (activeLoan.loan_id && payment.loan_id === activeLoan.loan_id)
+      );
+      activeLoan.payments = loanPayments.map(payment => ({
+        id: payment.id,
+        amount: payment.amount,
+        status: payment.status
+      }));
+    }
+
+    return { activeLoan, creditScore: eligibility.creditScore, recentPayments: payments };
   },
-  signup: async (name: string, email: string, password: string) => {
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: { data: { name } }
-    });
-    return { success: !error, data, error };
-  },
-  logout: async () => {
-    const { error } = await supabase.auth.signOut();
-    return { success: !error, error };
+
+  // Payment creation with proper relationships
+  async createPayment(payment: PaymentInsert): Promise<Payment> {
+    const { data, error } = await supabase
+      .from('payments')
+      .insert(payment)
+      .select('*, farmer:farmer_id(*), loan_application:loan_application_id(*)')
+      .single();
+    
+    if (error) throw new Error(`Failed to create payment: ${error.message}`);
+    return data;
   }
 };
 ```
@@ -84,412 +145,554 @@ export const authAPI = {
 ### 3. Route Builder Pattern
 ```typescript
 // Feature routes are functions that return route configurations
-export function authRoutes(rootRoute: AnyRoute) {
-  const authLayoutRoute = createRoute({
+export function farmerRoutes(rootRoute: AnyRoute) {
+  const farmerLayoutRoute = createRoute({
     getParentRoute: () => rootRoute,
-    id: 'authLayout',
-    component: AuthLayout,
+    id: 'farmerLayout',
+    component: FarmerLayout,
+    beforeLoad: ({ context }) => {
+      // Role-based access control
+      if (context.user?.role !== 'farmer') {
+        throw redirect({ to: '/auth/login' });
+      }
+    }
   });
   
   // Add child routes
-  authLayoutRoute.addChildren([loginRoute, signupRoute, forgotPasswordRoute]);
+  farmerLayoutRoute.addChildren([
+    dashboardRoute,
+    ussdSimulatorRoute,
+    applyLoanRoute,
+    checkEligibilityRoute,
+    loanListRoute,
+    loanDetailsRoute
+  ]);
   
-  return authLayoutRoute;
+  return farmerLayoutRoute;
 }
 ```
 
-### 4. Layout Pattern
+### 4. Impersonation Pattern
 ```typescript
-// Layouts wrap feature pages and provide common UI elements
-const AuthLayout = () => (
-  <div className="auth-layout">
-    <LanguageSelector />
-    <Outlet />
-  </div>
-);
+// Impersonation hook for API integration
+export const useImpersonation = () => {
+  const { isImpersonating, impersonatedUser } = useImpersonationStore();
+  
+  const getEffectiveUser = () => {
+    return isImpersonating && impersonatedUser ? impersonatedUser : null;
+  };
+  
+  const getEffectiveUserId = () => {
+    const effectiveUser = getEffectiveUser();
+    return effectiveUser?.id || null;
+  };
+  
+  const getEffectiveEntityId = () => {
+    const effectiveUser = getEffectiveUser();
+    return effectiveUser?.entity_id || null;
+  };
+  
+  return {
+    isImpersonating,
+    impersonatedUser,
+    getEffectiveUser,
+    getEffectiveUserId,
+    getEffectiveEntityId
+  };
+};
+
+// API integration with impersonation
+const getEffectiveFarmerId = (): string | null => {
+  const impersonationStore = useImpersonationStore.getState();
+  return impersonationStore.isImpersonating && impersonationStore.impersonatedUser?.entity_id 
+    ? impersonationStore.impersonatedUser.entity_id 
+    : null;
+};
+```
+
+### 5. Offline-Aware API Pattern
+```typescript
+// Offline-aware API operations
+export const offlineAwareAPI = {
+  async createFarmer(farmerData: FarmerRegistration) {
+    const isOnline = navigator.onLine;
+    
+    if (isOnline) {
+      try {
+        // Try online operation first
+        const result = await supabase.from('farmers').insert(farmerData);
+        return { success: true, data: result.data, source: 'online' };
+      } catch (error) {
+        // Fallback to offline storage
+        return await this.storeOffline(farmerData);
+      }
+    } else {
+      // Store offline
+      return await this.storeOffline(farmerData);
+    }
+  },
+
+  async storeOffline(data: any) {
+    const offlineStore = useOfflineStore.getState();
+    await offlineStore.addToSyncQueue('farmers', 'create', data);
+    return { success: true, data, source: 'offline' };
+  }
+};
+```
+
+### 6. Loan-Payment Relationship Pattern
+```typescript
+// Smart payment calculation in components
+export const LoanSummary: React.FC<LoanSummaryProps> = ({ loan }) => {
+  // Calculate remaining amount from payments
+  const calculateRemaining = () => {
+    if (loan.remaining !== undefined) {
+      return loan.remaining;
+    }
+    
+    if (loan.payments && loan.payments.length > 0) {
+      const totalPaid = loan.payments
+        .filter(payment => payment.status === 'completed')
+        .reduce((sum, payment) => sum + payment.amount, 0);
+      return Math.max(0, loan.amount - totalPaid);
+    }
+    
+    return loan.amount; // If no payments, full amount is remaining
+  };
+
+  const remainingAmount = calculateRemaining();
+  const progressPercentage = loan.amount > 0 
+    ? Math.round(((loan.amount - remainingAmount) / loan.amount) * 100)
+    : 0;
+
+  return (
+    // Component JSX with calculated values
+  );
+};
+```
+
+### 7. Role Switching Pattern
+```typescript
+// Smart role switching with auto-selection
+export const RoleSwitcher: React.FC<RoleSwitcherProps> = ({ title, userRole }) => {
+  const { switchRoleAndSelectFirst } = useImpersonationStore();
+  
+  const handleRoleChange = async (role: Role) => {
+    // Switch role and automatically select the first user if available
+    if (role.id === 'farmer' || role.id === 'data-collector') {
+      await switchRoleAndSelectFirst(role.id);
+    }
+    
+    updateRole(role.id);
+    navigate({ to: role.baseUrl as any });
+  };
+
+  return (
+    // Role switcher UI
+  );
+};
+```
+
+## Database Relationship Patterns
+
+### 1. Loan-Payment Relationship Schema
+```sql
+-- Loan applications table with loan relationship
+ALTER TABLE loan_applications 
+ADD COLUMN loan_id UUID REFERENCES loans(id);
+
+-- Payments table with both loan and loan_application relationships
+ALTER TABLE payments 
+ADD COLUMN loan_application_id UUID REFERENCES loan_applications(id);
+
+-- Automatic loan creation trigger
+CREATE TRIGGER trigger_create_loan_from_application
+  BEFORE UPDATE ON loan_applications
+  FOR EACH ROW
+  EXECUTE FUNCTION create_loan_from_application();
+
+-- Automatic payment linking trigger
+CREATE TRIGGER trigger_link_payment_to_application
+  BEFORE INSERT OR UPDATE ON payments
+  FOR EACH ROW
+  EXECUTE FUNCTION link_payment_to_application();
+```
+
+### 2. TypeScript Type Extensions
+```typescript
+// Extended types for relationships
+export type LoanApplication = Tables<'loan_applications'> & {
+  payments?: Array<{
+    id: string;
+    amount: number;
+    status: string;
+  }>;
+  loan?: Loan;
+};
+
+export type Payment = Tables<'payments'> & {
+  loan_application?: LoanApplication;
+  farmer?: Farmer;
+};
 ```
 
 ## Component Patterns
 
-### 1. UI Component Pattern
+### 1. Shared Component Pattern
 ```typescript
-// Reusable UI components with variants
-export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ className, variant, size, ...props }, ref) => {
-    return (
-      <button
-        className={cn(buttonVariants({ variant, size, className }))}
-        ref={ref}
-        {...props}
-      />
-    );
-  }
-);
-```
-
-### 2. Form Pattern
-```typescript
-// Controlled forms with validation
-export function LoginForm() {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    // Form submission logic
-  };
+// Reusable loan components
+export const LoanSummary: React.FC<LoanSummaryProps> = ({ 
+  loan,
+  showProgress = true,
+  showNextPayment = true,
+  className = ""
+}) => {
+  // Smart calculation logic
+  const calculateRemaining = () => { /* implementation */ };
+  const remainingAmount = calculateRemaining();
   
   return (
-    <form onSubmit={handleSubmit}>
-      {/* Form fields */}
-    </form>
+    <Card className={className}>
+      {/* Responsive loan summary UI */}
+    </Card>
   );
-}
+};
+
+// Shared payment history component
+export const PaymentHistory: React.FC<PaymentHistoryProps> = ({ payments }) => {
+  const { t } = useTranslation();
+  
+  return (
+    <div className="space-y-4">
+      {payments.map(payment => (
+        <PaymentCard key={payment.id} payment={payment} />
+      ))}
+    </div>
+  );
+};
+```
+
+### 2. Responsive Navigation Pattern
+```typescript
+// Shared top navigation with role switching and impersonation
+export const TopNavigation: React.FC<TopNavigationProps> = ({ title }) => {
+  return (
+    <nav className="flex items-center justify-between p-4 bg-white border-b">
+      <RoleSwitcher title={title} />
+      <div className="flex items-center space-x-4">
+        <LanguageSelector />
+        <ThemeToggle />
+        <ImpersonationSwitcher />
+        <AuthStatus />
+      </div>
+    </nav>
+  );
+};
 ```
 
 ## State Management Patterns
 
-### 1. Global State (Zustand)
-- **Auth Store**: User authentication state, tokens, loading states
-- **UI Store**: Theme, language, notifications, sidebar state
-- **Feature Stores**: Feature-specific state (loan data, farmer data, etc.)
-
-### 2. Local State (React useState)
-- Form inputs and validation
-- Component-specific UI state
-- Temporary data that doesn't need persistence
-
-### 3. Server State (TanStack Query)
-- API data caching and synchronization
-- Background refetching
-- Optimistic updates
-
-## Routing Patterns
-
-### 1. Nested Routing
+### 1. Multi-Store Architecture
 ```typescript
-// Parent route with layout
-const authLayoutRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  id: 'authLayout',
-  component: AuthLayout,
-});
+// Centralized store exports
+export { useAuthStore } from './authStore';
+export { useUIStore } from './uiStore';
+export { useRoleState } from './roleStore';
+export { useImpersonationStore } from './impersonationStore';
+export { useOfflineStore } from './offlineStore';
 
-// Child routes
-const loginRoute = createRoute({
-  getParentRoute: () => authLayoutRoute,
-  path: 'auth/signin',
-  component: LoginPage,
-});
+// Store composition pattern
+export const useAppState = () => {
+  const auth = useAuthStore();
+  const ui = useUIStore();
+  const role = useRoleState();
+  const impersonation = useImpersonationStore();
+  const offline = useOfflineStore();
+  
+  return { auth, ui, role, impersonation, offline };
+};
 ```
 
-### 2. Route Protection
+### 2. Offline State Management
 ```typescript
-// Protected routes based on authentication and roles
-const protectedRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  beforeLoad: ({ context }) => {
-    if (!context.auth.user) {
-      throw redirect({ to: '/auth/signin' });
-    }
-  },
-});
-```
-
-## Supabase Integration Patterns
-
-### 1. Supabase Client Configuration
-```typescript
-// Centralized Supabase client
-import { createClient } from '@supabase/supabase-js';
-
-export const supabase = createClient(
-  import.meta.env.VITE_SUPABASE_URL,
-  import.meta.env.VITE_SUPABASE_ANON_KEY
+// Offline store with sync queue
+export const useOfflineStore = create<OfflineState>()(
+  persist(
+    (set, get) => ({
+      isOnline: navigator.onLine,
+      syncQueue: [],
+      conflicts: [],
+      
+      addToSyncQueue: async (table, operation, data) => {
+        const queue = get().syncQueue;
+        const newItem = { id: Date.now(), table, operation, data, timestamp: Date.now() };
+        set({ syncQueue: [...queue, newItem] });
+        await get().processSyncQueue();
+      },
+      
+      processSyncQueue: async () => {
+        if (!get().isOnline) return;
+        
+        const queue = get().syncQueue;
+        for (const item of queue) {
+          try {
+            await processSyncItem(item);
+            set({ syncQueue: queue.filter(q => q.id !== item.id) });
+          } catch (error) {
+            // Handle conflicts and retries
+          }
+        }
+      }
+    }),
+    { name: 'offline-storage' }
+  )
 );
 ```
 
-### 2. Database Operations Pattern
+## Error Handling Patterns
+
+### 1. API Error Handling
 ```typescript
-// Feature-specific database operations
+// Consistent error handling across APIs
+export const handleAPIError = (error: any, context: string) => {
+  console.error(`Error in ${context}:`, error);
+  
+  if (error.code === 'PGRST116') {
+    return { success: false, error: 'No data found' };
+  }
+  
+  if (error.message?.includes('network')) {
+    return { success: false, error: 'Network error - check connection' };
+  }
+  
+  return { success: false, error: error.message || 'Unknown error occurred' };
+};
+
+// Usage in API methods
 export const farmerAPI = {
-  getFarmers: async () => {
-    const { data, error } = await supabase
-      .from('farmers')
-      .select('*')
-      .order('created_at', { ascending: false });
-    return { success: !error, data, error };
-  },
-  
-  createFarmer: async (farmerData) => {
-    const { data, error } = await supabase
-      .from('farmers')
-      .insert(farmerData)
-      .select()
-      .single();
-    return { success: !error, data, error };
+  async getFarmerProfile(farmerId: string) {
+    try {
+      const { data, error } = await supabase
+        .from('farmers')
+        .select('*')
+        .eq('id', farmerId)
+        .single();
+      
+      if (error) throw error;
+      return { success: true, data };
+    } catch (error) {
+      return handleAPIError(error, 'getFarmerProfile');
+    }
   }
 };
 ```
 
-### 3. Real-time Subscriptions Pattern
+### 2. Component Error Boundaries
 ```typescript
-// Real-time data subscriptions
-export const useRealtimeFarmers = () => {
-  const [farmers, setFarmers] = useState([]);
+// Error boundary for feature components
+export const FeatureErrorBoundary: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const [hasError, setHasError] = useState(false);
   
-  useEffect(() => {
-    const subscription = supabase
-      .channel('farmers_changes')
-      .on('postgres_changes', 
-        { event: '*', schema: 'public', table: 'farmers' },
-        (payload) => {
-          // Handle real-time updates
-          console.log('Change received!', payload);
-        }
-      )
-      .subscribe();
-    
-    return () => subscription.unsubscribe();
-  }, []);
-  
-  return farmers;
-};
-```
-
-### 4. Row Level Security (RLS) Pattern
-```sql
--- Example RLS policy for farmers table
-CREATE POLICY "Users can view their own data" ON farmers
-  FOR SELECT USING (auth.uid() = user_id);
-
-CREATE POLICY "Data collectors can view assigned farmers" ON farmers
-  FOR SELECT USING (
-    EXISTS (
-      SELECT 1 FROM user_assignments 
-      WHERE collector_id = auth.uid() 
-      AND farmer_id = farmers.id
-    )
-  );
-```
-
-## Internationalization Pattern
-
-### 1. Namespace Organization
-```typescript
-// Feature-specific translation namespaces
-const resources = {
-  en: {
-    auth: { /* auth translations */ },
-    common: { /* common translations */ },
-    farmer: { /* farmer translations */ },
-    // ... other namespaces
+  if (hasError) {
+    return (
+      <div className="p-4 text-center">
+        <p className="text-red-600">Something went wrong. Please try refreshing the page.</p>
+        <button onClick={() => window.location.reload()}>Refresh</button>
+      </div>
+    );
   }
-};
-```
-
-### 2. Translation Hook Pattern
-```typescript
-// Consistent translation usage
-export function LoginForm() {
-  const { t } = useTranslation('auth');
   
   return (
-    <h1>{t('loginWithYourAccount')}</h1>
+    <ErrorBoundary onError={() => setHasError(true)}>
+      {children}
+    </ErrorBoundary>
   );
-}
-```
-
-## Responsive Design Patterns
-
-### 1. Mobile-First Approach
-```css
-/* Base styles for mobile */
-.container { padding: 1rem; }
-
-/* Tablet and up */
-@media (min-width: 768px) {
-  .container { padding: 2rem; }
-}
-
-/* Desktop and up */
-@media (min-width: 1024px) {
-  .container { padding: 3rem; }
-}
-```
-
-### 2. Component Responsiveness
-```typescript
-// Components adapt to screen size
-const Dashboard = () => (
-  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-    {/* Dashboard cards */}
-  </div>
-);
-```
-
-## Security Patterns
-
-### 1. Supabase Authentication Flow
-1. User submits credentials
-2. Supabase validates and returns JWT token
-3. Token stored in Zustand store and Supabase session
-4. Supabase client automatically includes token in requests
-5. Protected routes check for valid Supabase session
-6. Row Level Security (RLS) policies enforce data access
-
-### 2. Role-Based Access Control
-```typescript
-// Route protection based on user roles
-const adminRoute = createRoute({
-  beforeLoad: ({ context }) => {
-    if (context.auth.user?.role !== 'admin') {
-      throw redirect({ to: '/unauthorized' });
-    }
-  },
-});
+};
 ```
 
 ## Performance Patterns
 
 ### 1. Code Splitting
-- Feature-based code splitting
-- Lazy loading of routes
-- Dynamic imports for heavy components
-
-### 2. Caching Strategy
-- API response caching with TanStack Query
-- Local storage for user preferences
-- Session storage for temporary data
-
-### 3. Bundle Optimization
-- Tree shaking for unused code
-- Image optimization
-- CSS purging with Tailwind
-
-## Offline Patterns
-
-### 1. IndexedDB with Dexie.js
 ```typescript
-// Offline database setup
-export class OfflineDatabase extends Dexie {
-  farmers!: Table<OfflineFarmer>;
-  syncQueue!: Table<SyncQueueItem>;
-  offlineStatus!: Table<OfflineStatus>;
+// Lazy loading for feature routes
+const FarmerDashboard = lazy(() => import('./components/FarmerDashboard'));
+const DataCollectorDashboard = lazy(() => import('./components/DataCollectorDashboard'));
 
-  constructor() {
-    super('FarmersLoanFacilitatorDB');
-    this.version(1).stores({
-      farmers: '++id, local_id, data_collector_id, sync_status',
-      syncQueue: '++id, action, table, timestamp, retry_count',
-      offlineStatus: 'id'
-    });
-  }
-}
-```
-
-### 2. Offline-Aware API Operations
-```typescript
-// API operations that work offline
-async registerFarmer(farmerData) {
-  const isOffline = offlineStore.isOfflineMode || !offlineStore.isOnline;
+// Route-based code splitting
+export const farmerRoutes = (rootRoute: AnyRoute) => {
+  const dashboardRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/dashboard',
+    component: FarmerDashboard,
+  });
   
-  if (isOffline) {
-    // Save to offline storage
-    const local_id = await offlineStorage.saveFarmerOffline(farmerData);
-    return { id: local_id, ...farmerData };
-  }
-  
-  // Online mode - save to Supabase
-  return await supabase.from('farmers').insert(farmerData);
-}
-```
-
-### 3. Sync Queue Management
-```typescript
-// Queue operations for later sync
-interface SyncQueueItem {
-  action: 'create' | 'update' | 'delete';
-  table: string;
-  data: any;
-  local_id?: string;
-  timestamp: string;
-  retry_count: number;
-  max_retries: number;
-}
-
-// Process sync queue when online
-async processSyncQueue(supabaseAPI) {
-  const queueItems = await this.getSyncQueue();
-  
-  for (const item of queueItems) {
-    try {
-      await this.processSyncItem(item, supabaseAPI);
-      await this.db.syncQueue.delete(item.id!);
-    } catch (error) {
-      item.retry_count++;
-      if (item.retry_count >= item.max_retries) {
-        await this.db.syncQueue.delete(item.id!);
-      } else {
-        await this.db.syncQueue.update(item.id!, item);
-      }
-    }
-  }
-}
-```
-
-### 4. Offline Status Management
-```typescript
-// Zustand store for offline state
-interface OfflineStore {
-  isOnline: boolean;
-  isOfflineMode: boolean;
-  pendingSyncCount: number;
-  syncInProgress: boolean;
-  syncErrors: string[];
-  
-  checkOnlineStatus: () => Promise<void>;
-  syncData: () => Promise<{ success: number; failed: number; errors: string[] }>;
-  toggleOfflineMode: () => void;
-}
-```
-
-### 5. Offline Status Indicators
-```typescript
-// Visual indicators for offline status
-const getStatusIcon = () => {
-  if (isOfflineMode) {
-    return { icon: WifiOff, color: 'text-orange-500', bgColor: 'bg-orange-100' };
-  }
-  if (!isOnline) {
-    return { icon: WifiOff, color: 'text-red-500', bgColor: 'bg-red-100' };
-  }
-  if (pendingSyncCount > 0) {
-    return { icon: RotateCcw, color: 'text-yellow-500', bgColor: 'bg-yellow-100' };
-  }
-  return { icon: Wifi, color: 'text-green-500', bgColor: 'bg-green-100' };
+  return dashboardRoute;
 };
 ```
 
-### 6. Conflict Resolution
+### 2. Optimistic Updates
 ```typescript
-// Handle data conflicts during sync
-private async processSyncItem(item: SyncQueueItem, supabaseAPI: any) {
-  switch (item.action) {
-    case 'create':
-      const result = await supabaseAPI.registerFarmer(item.data);
-      // Update local record with server ID
-      if (item.local_id) {
-        await this.db.farmers
-          .where('local_id')
-          .equals(item.local_id)
-          .modify({ 
-            id: result.id, 
-            sync_status: 'synced',
-            local_id: undefined
-          });
-      }
-      break;
-  }
-}
+// Optimistic updates for better UX
+export const useOptimisticUpdate = () => {
+  const queryClient = useQueryClient();
+  
+  const optimisticUpdate = async (mutationFn: () => Promise<any>, updateFn: () => void) => {
+    // Apply optimistic update immediately
+    updateFn();
+    
+    try {
+      // Perform actual update
+      await mutationFn();
+    } catch (error) {
+      // Revert on error
+      queryClient.invalidateQueries();
+    }
+  };
+  
+  return { optimisticUpdate };
+};
 ```
+
+## Security Patterns
+
+### 1. Row Level Security (RLS)
+```sql
+-- RLS policies for data protection
+CREATE POLICY "Users can view their own loan applications" ON loan_applications
+FOR SELECT USING (farmer_id = auth.uid());
+
+CREATE POLICY "Users can insert payments for their loan applications" ON payments
+FOR INSERT WITH CHECK (
+  loan_application_id IN (
+    SELECT id FROM loan_applications WHERE farmer_id = auth.uid()
+  )
+);
+```
+
+### 2. Input Validation
+```typescript
+// Comprehensive input validation
+export const validateFarmerData = (data: any): ValidationResult => {
+  const errors: string[] = [];
+  
+  if (!data.full_name?.trim()) {
+    errors.push('Full name is required');
+  }
+  
+  if (!data.phone_number?.match(/^\+?[1-9]\d{1,14}$/)) {
+    errors.push('Valid phone number is required');
+  }
+  
+  if (data.farm_size_hectares && data.farm_size_hectares <= 0) {
+    errors.push('Farm size must be positive');
+  }
+  
+  return {
+    isValid: errors.length === 0,
+    errors
+  };
+};
+```
+
+## Testing Patterns
+
+### 1. Impersonation Testing
+```typescript
+// Test different user roles with impersonation
+export const TestWithImpersonation: React.FC<{ role: string }> = ({ role, children }) => {
+  const { loadUsersForRole, startImpersonation } = useImpersonationStore();
+  
+  useEffect(() => {
+    const setupImpersonation = async () => {
+      await loadUsersForRole(role as any);
+      const users = useImpersonationStore.getState().availableUsers[role];
+      if (users?.length > 0) {
+        startImpersonation(users[0]);
+      }
+    };
+    
+    setupImpersonation();
+  }, [role]);
+  
+  return <>{children}</>;
+};
+```
+
+### 2. Offline Testing
+```typescript
+// Test offline functionality
+export const OfflineTestWrapper: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { setOfflineMode } = useOfflineStore();
+  
+  const toggleOffline = () => {
+    setOfflineMode(!navigator.onLine);
+  };
+  
+  return (
+    <div>
+      <button onClick={toggleOffline}>Toggle Offline Mode</button>
+      {children}
+    </div>
+  );
+};
+```
+
+## Internationalization Patterns
+
+### 1. Translation Organization
+```typescript
+// Organized translation namespaces
+export const i18n = createInstance({
+  resources: {
+    en: {
+      common: commonTranslations,
+      auth: authTranslations,
+      farmer: farmerTranslations,
+      'data-collector': dataCollectorTranslations,
+      'financial-institution': financialInstitutionTranslations,
+      admin: adminTranslations
+    },
+    am: {
+      // Amharic translations
+    },
+    om: {
+      // Afaan Oromoo translations
+    }
+  }
+});
+```
+
+### 2. Dynamic Translation Loading
+```typescript
+// Load translations based on feature
+export const useFeatureTranslation = (feature: string) => {
+  const { t, i18n } = useTranslation(feature);
+  
+  useEffect(() => {
+    if (!i18n.hasResourceBundle(i18n.language, feature)) {
+      import(`@/lib/localization/i18n.${feature}.ts`).then((module) => {
+        i18n.addResourceBundle(i18n.language, feature, module.default);
+      });
+    }
+  }, [feature, i18n]);
+  
+  return { t };
+};
+```
+
+## Summary
+
+The system implements a comprehensive set of patterns that support:
+
+1. **Feature-Based Architecture**: Clear separation of concerns with modular design
+2. **Advanced State Management**: Multi-store architecture with offline support
+3. **User Impersonation**: Complete testing system for multi-role development
+4. **Offline-First Design**: Robust offline capabilities with sync management
+5. **Proper Data Relationships**: Loan-payment relationships with automatic linking
+6. **Role-Based Access Control**: Comprehensive role management and switching
+7. **Performance Optimization**: Code splitting, optimistic updates, and caching
+8. **Security**: RLS policies and input validation
+9. **Testing**: Impersonation and offline testing patterns
+10. **Internationalization**: Multi-language support with organized translations
+
+These patterns ensure the system is scalable, maintainable, and provides an excellent user experience across all user roles and scenarios.

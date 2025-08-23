@@ -67,9 +67,12 @@ FOR SELECT USING (farmer_id = auth.uid());
 -- 9. Add a trigger to automatically create a loan when loan_application is approved
 CREATE OR REPLACE FUNCTION create_loan_from_application()
 RETURNS TRIGGER AS $$
+DECLARE
+  new_loan_id UUID;
 BEGIN
   -- Only create loan when status changes to 'approved'
   IF NEW.status = 'approved' AND (OLD.status IS NULL OR OLD.status != 'approved') THEN
+    -- Insert the loan and get the generated ID
     INSERT INTO loans (
       farmer_id,
       loan_amount,
@@ -88,10 +91,10 @@ BEGIN
       'active',
       auth.uid(),
       NOW()
-    );
+    ) RETURNING id INTO new_loan_id;
     
     -- Update the loan_application with the created loan_id
-    NEW.loan_id = currval('loans_id_seq');
+    NEW.loan_id = new_loan_id;
   END IF;
   
   RETURN NEW;

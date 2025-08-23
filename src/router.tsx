@@ -7,6 +7,7 @@ import { authRoutes } from '@features/auth/auth.routes';
 import { homeRoutes } from '@features/home/home.routes';
 import { farmerRoutes } from '@features/farmer/farmer.routes';
 import { dataCollectorRoutes } from '@features/data-collector/data-collector.routes';
+import { financialInstitutionRoutes } from '@features/financial-institution/financial-institution.routes';
 
 // Root route
 const rootRoute = createRootRoute({
@@ -20,6 +21,7 @@ rootRoute.addChildren([
 	authRoutes(rootRoute),
 	farmerRoutes(rootRoute),
 	dataCollectorRoutes(rootRoute),
+	financialInstitutionRoutes(rootRoute),
 ]);
 
 const router = createRouter({ routeTree: rootRoute });
