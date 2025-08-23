@@ -1,7 +1,7 @@
 // Central API routes
 // Authentication endpoints
 export const AUTH_ENDPOINTS = {
-  LOGIN: '/auth/login',
+  LOGIN: '/auth/signin',
   LOGOUT: '/auth/logout',
   REGISTER: '/auth/register',
   REFRESH: '/auth/refresh',

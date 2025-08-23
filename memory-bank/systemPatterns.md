@@ -153,7 +153,7 @@ export function farmerRoutes(rootRoute: AnyRoute) {
     beforeLoad: ({ context }) => {
       // Role-based access control
       if (context.user?.role !== 'farmer') {
-        throw redirect({ to: '/auth/login' });
+        throw redirect({ to: '/auth/signin' });
       }
     }
   });

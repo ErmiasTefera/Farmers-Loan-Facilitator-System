@@ -1,6 +1,7 @@
 import React from 'react';
 import { HomeButton } from './HomeButton';
 import { AuthStatus } from '@/features/auth/components/AuthStatus';
+import { RoleSwitcher } from './RoleSwitcher';
 import ThemeToggle from './ThemeToggle';
 import LanguageSelector from './LanguageSelector';
 
@@ -11,9 +12,10 @@ interface TopbarNavProps {
 export const TopbarNav: React.FC<TopbarNavProps> = ({ className }) => {
   return (
     <nav className={`flex items-center justify-between w-full p-2 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 ${className || ''}`}>
-      {/* Left side - Home Button */}
-      <div className="flex items-center">
+      {/* Left side - Home Button and Role Switcher */}
+      <div className="flex items-center gap-4">
         <HomeButton />
+        <RoleSwitcher />
       </div>
 
       {/* Right side - Auth Status and Theme Toggle */}

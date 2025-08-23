@@ -108,6 +108,11 @@ export const RoleSwitcher: React.FC<RoleSwitcherProps> = ({
     
     // Navigate to the role's base URL
     navigate({ to: role.baseUrl as any });
+    
+    // Refresh the page after a short delay to ensure state is updated
+    setTimeout(() => {
+      window.location.reload();
+    }, 100);
   };
 
   return (

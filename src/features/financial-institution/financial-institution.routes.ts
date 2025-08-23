@@ -4,6 +4,8 @@ import { DashboardPage } from './pages/dashboard';
 import { ApplicationsPage } from './pages/applications';
 import { ApplicationReviewPage } from './pages/application-review';
 import { PortfolioPage } from './pages/portfolio';
+import { RiskAssessmentPage } from './pages/risk-assessment';
+import { ReportsPage } from './pages/reports';
 import type { AnyRoute } from '@tanstack/react-router';
 
 export function financialInstitutionRoutes(rootRoute: AnyRoute) {
@@ -41,6 +43,20 @@ export function financialInstitutionRoutes(rootRoute: AnyRoute) {
     component: PortfolioPage,
   });
 
+  // Risk assessment route
+  const riskAssessmentRoute = createRoute({
+    getParentRoute: () => financialInstitutionLayoutRoute,
+    path: '/risk-assessment',
+    component: RiskAssessmentPage,
+  });
+
+  // Reports route
+  const reportsRoute = createRoute({
+    getParentRoute: () => financialInstitutionLayoutRoute,
+    path: '/reports',
+    component: ReportsPage,
+  });
+
   // Default redirect to dashboard
   const indexRoute = createRoute({
     getParentRoute: () => financialInstitutionLayoutRoute,
@@ -51,7 +67,7 @@ export function financialInstitutionRoutes(rootRoute: AnyRoute) {
   });
 
   // Add child routes
-  financialInstitutionLayoutRoute.addChildren([indexRoute, dashboardRoute, applicationsRoute, applicationReviewRoute, portfolioRoute]);
+  financialInstitutionLayoutRoute.addChildren([indexRoute, dashboardRoute, applicationsRoute, applicationReviewRoute, portfolioRoute, riskAssessmentRoute, reportsRoute]);
 
   return financialInstitutionLayoutRoute;
 }
