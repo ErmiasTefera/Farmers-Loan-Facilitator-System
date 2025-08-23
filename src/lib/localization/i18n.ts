@@ -5,11 +5,15 @@ import { common } from './i18n.common'
 import { auth } from './i18n.auth'
 import { ussdTranslations } from './i18n.ussd'
 import { farmer } from './i18n.farmer'
+import { dataCollector } from './i18n.dataCollector'
 
 const resources = {
   en: {
     translation: {
       ...common.en,
+      common: {
+        ...common.en,
+      },
       auth: {
         ...auth.en,
       },
@@ -17,17 +21,26 @@ const resources = {
       farmer: {
         ...farmer.en,
       },
+      dataCollector: {
+        ...dataCollector.en,
+      },
     },
   },
   am: {
     translation: {
-      ...common.en,
+      ...common.am,
+      common: {
+        ...common.am,
+      },
       auth: {
         ...auth.am,
       },
       ...ussdTranslations.am,
       farmer: {
         ...farmer.am,
+      },
+      dataCollector: {
+        ...dataCollector.am,
       },
     },
   },

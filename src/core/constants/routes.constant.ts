@@ -26,6 +26,13 @@ export const APP_ROUTES = {
 		applyLoan: '/farmer/apply-loan',
 		checkEligibility: '/farmer/check-eligibility'
 	},
+	DATA_COLLECTOR: {
+		root: '/data-collector',
+		dashboard: '/data-collector/dashboard',
+		farmers: '/data-collector/farmers',
+		registerFarmer: '/data-collector/register-farmer',
+		verifications: '/data-collector/verifications',
+	},
     HARVESTING: {
         root: '/harvesting',
     },

@@ -13,6 +13,7 @@ import {
   Search,
   TrendingUp
 } from 'lucide-react';
+import { useImpersonation } from '@/core/hooks/useImpersonation';
 
 // Using LoanCardData from shared components
 type Loan = LoanCardData;
@@ -24,13 +25,18 @@ export const LoanList: React.FC = () => {
   const [filter, setFilter] = useState<'all' | 'pending' | 'approved' | 'rejected'>('all');
   const [searchTerm, setSearchTerm] = useState('');
 
+  const { getEffectiveUser } = useImpersonation();
+
   useEffect(() => {
     const loadLoans = async () => {
       if (!user?.id) return;
 
       try {
         setLoading(true);
-        const loanApplications = await farmerAPI.getLoanApplicationsByFarmer(user.id);
+        const effectiveUser = getEffectiveUser();
+        if (!effectiveUser?.id) return;
+        const entityId = effectiveUser.entity_id || effectiveUser.id;
+        const loanApplications = await farmerAPI.getLoanApplicationsByFarmer(entityId);
         setLoans(loanApplications);
       } catch (error) {
         console.error('Error loading loans:', error);

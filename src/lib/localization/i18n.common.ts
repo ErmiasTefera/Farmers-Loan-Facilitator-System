@@ -16,7 +16,63 @@ export const common = {
     filter: 'Filter',
     all: 'All',
     yes: 'Yes',
-    no: 'No'
+    no: 'No',
+    // Role Switcher
+    switchRole: 'Switch Role',
+    roles: {
+      farmer: 'Farmer',
+      'data-collector': 'Data Collector',
+      dataCollector: 'Data Collector',
+      'financial-institution': 'Financial Institution',
+      financialInstitution: 'Financial Institution',
+      admin: 'Administrator',
+    },
+    // Offline functionality
+    offline: {
+      online: 'Online',
+      offline: 'Offline',
+      manualOffline: 'Manual Offline',
+      pendingSync: '{{count}} pending sync',
+      syncing: 'Syncing...',
+      sync: 'Sync',
+      syncNow: 'Sync Now',
+      checkConnection: 'Check Connection',
+      enableOffline: 'Enable Offline Mode',
+      enableOnline: 'Enable Online Mode',
+      lastChecked: 'Last checked: {{time}}',
+      totalFarmers: 'Total Farmers',
+      synced: 'Synced',
+      failed: 'Failed',
+      syncErrors: 'Sync Errors',
+      clearErrors: 'Clear Errors'
+    },
+    // Payment status
+    paymentStatus: {
+      completed: 'Completed',
+      pending: 'Pending',
+      failed: 'Failed',
+      unknown: 'Unknown'
+    },
+    // Loan status
+    loanStatus: {
+      active: 'Active',
+      pending: 'Pending',
+      approved: 'Approved',
+      rejected: 'Rejected',
+      completed: 'Completed'
+    },
+    // Payment and loan labels
+    totalLoan: 'Total Loan',
+    remaining: 'Remaining',
+    nextPayment: 'Next Payment',
+    repaymentProgress: 'Repayment Progress',
+    paid: 'paid',
+    noPaymentHistory: 'No payment history available',
+    payments: 'payments',
+    payment: 'payment',
+    noData: 'No data available',
+    notAvailable: 'N/A',
+    viewAll: 'View All',
   },
   am: {
     logout: 'ይውጡ',
@@ -35,6 +91,62 @@ export const common = {
     filter: 'ፊልተር',
     all: 'ሁሉም',
     yes: 'አዎ',
-    no: 'አይ'
+    no: 'አይ',
+    // Role Switcher
+    switchRole: 'ሚና ቀይር',
+    roles: {
+      farmer: 'አርሶ አደር',
+      'data-collector': 'ዳሰሳ ሰብሳቢ',
+      dataCollector: 'ዳሰሳ ሰብሳቢ',
+      'financial-institution': 'የገንዘብ ተቋም',
+      financialInstitution: 'የገንዘብ ተቋም',
+      admin: 'አስተዳደሪ',
+    },
+    // Offline functionality
+    offline: {
+      online: 'መስመር ላይ',
+      offline: 'መስመር ውጭ',
+      manualOffline: 'እራስ የተደረገ መስመር ውጭ',
+      pendingSync: '{{count}} የሚጠበቀ ማጣመር',
+      syncing: 'ያጣምማል...',
+      sync: 'ማጣመር',
+      syncNow: 'አሁን ማጣመር',
+      checkConnection: 'ግንኙነት ያረጋግጡ',
+      enableOffline: 'መስመር ውጭ ሁኔታ ያንቁ',
+      enableOnline: 'መስመር ላይ ሁኔታ ያንቁ',
+      lastChecked: 'ያለፈ ጊዜ የተጣራ: {{time}}',
+      totalFarmers: 'ጠቅላላ አርሶ አደሮች',
+      synced: 'የተጣመረ',
+      failed: 'ያልተሳካለ',
+      syncErrors: 'የማጣመር ስህተቶች',
+      clearErrors: 'ስህተቶችን ያጽዱ'
+    },
+    // Payment status
+    paymentStatus: {
+      completed: 'ተጠናቅቋል',
+      pending: 'በጥበቃ ላይ',
+      failed: 'ያልተሳካለ',
+      unknown: 'የማይታወቅ'
+    },
+    // Loan status
+    loanStatus: {
+      active: 'ንቁ',
+      pending: 'በጥበቃ ላይ',
+      approved: 'የተጸደቀ',
+      rejected: 'የተቀተ',
+      completed: 'ተጠናቅቋል'
+    },
+    // Payment and loan labels
+    totalLoan: 'ጠቅላላ ብድር',
+    remaining: 'የተቀረ',
+    nextPayment: 'የሚቀጥለው ክፍያ',
+    repaymentProgress: 'የመክፈያ እድገት',
+    paid: 'የተከፈለ',
+    noPaymentHistory: 'የክፍያ ታሪክ አይገኝም',
+    payments: 'ክፍያዎች',
+    payment: 'ክፍያ',
+    noData: 'ዳታ አይገኝም',
+    notAvailable: 'የለም',
+    viewAll: 'ሁሉን ይመልከቱ',
   },
 };

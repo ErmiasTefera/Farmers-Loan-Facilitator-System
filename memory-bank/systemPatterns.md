@@ -366,3 +366,130 @@ const adminRoute = createRoute({
 - Tree shaking for unused code
 - Image optimization
 - CSS purging with Tailwind
+
+## Offline Patterns
+
+### 1. IndexedDB with Dexie.js
+```typescript
+// Offline database setup
+export class OfflineDatabase extends Dexie {
+  farmers!: Table<OfflineFarmer>;
+  syncQueue!: Table<SyncQueueItem>;
+  offlineStatus!: Table<OfflineStatus>;
+
+  constructor() {
+    super('FarmersLoanFacilitatorDB');
+    this.version(1).stores({
+      farmers: '++id, local_id, data_collector_id, sync_status',
+      syncQueue: '++id, action, table, timestamp, retry_count',
+      offlineStatus: 'id'
+    });
+  }
+}
+```
+
+### 2. Offline-Aware API Operations
+```typescript
+// API operations that work offline
+async registerFarmer(farmerData) {
+  const isOffline = offlineStore.isOfflineMode || !offlineStore.isOnline;
+  
+  if (isOffline) {
+    // Save to offline storage
+    const local_id = await offlineStorage.saveFarmerOffline(farmerData);
+    return { id: local_id, ...farmerData };
+  }
+  
+  // Online mode - save to Supabase
+  return await supabase.from('farmers').insert(farmerData);
+}
+```
+
+### 3. Sync Queue Management
+```typescript
+// Queue operations for later sync
+interface SyncQueueItem {
+  action: 'create' | 'update' | 'delete';
+  table: string;
+  data: any;
+  local_id?: string;
+  timestamp: string;
+  retry_count: number;
+  max_retries: number;
+}
+
+// Process sync queue when online
+async processSyncQueue(supabaseAPI) {
+  const queueItems = await this.getSyncQueue();
+  
+  for (const item of queueItems) {
+    try {
+      await this.processSyncItem(item, supabaseAPI);
+      await this.db.syncQueue.delete(item.id!);
+    } catch (error) {
+      item.retry_count++;
+      if (item.retry_count >= item.max_retries) {
+        await this.db.syncQueue.delete(item.id!);
+      } else {
+        await this.db.syncQueue.update(item.id!, item);
+      }
+    }
+  }
+}
+```
+
+### 4. Offline Status Management
+```typescript
+// Zustand store for offline state
+interface OfflineStore {
+  isOnline: boolean;
+  isOfflineMode: boolean;
+  pendingSyncCount: number;
+  syncInProgress: boolean;
+  syncErrors: string[];
+  
+  checkOnlineStatus: () => Promise<void>;
+  syncData: () => Promise<{ success: number; failed: number; errors: string[] }>;
+  toggleOfflineMode: () => void;
+}
+```
+
+### 5. Offline Status Indicators
+```typescript
+// Visual indicators for offline status
+const getStatusIcon = () => {
+  if (isOfflineMode) {
+    return { icon: WifiOff, color: 'text-orange-500', bgColor: 'bg-orange-100' };
+  }
+  if (!isOnline) {
+    return { icon: WifiOff, color: 'text-red-500', bgColor: 'bg-red-100' };
+  }
+  if (pendingSyncCount > 0) {
+    return { icon: RotateCcw, color: 'text-yellow-500', bgColor: 'bg-yellow-100' };
+  }
+  return { icon: Wifi, color: 'text-green-500', bgColor: 'bg-green-100' };
+};
+```
+
+### 6. Conflict Resolution
+```typescript
+// Handle data conflicts during sync
+private async processSyncItem(item: SyncQueueItem, supabaseAPI: any) {
+  switch (item.action) {
+    case 'create':
+      const result = await supabaseAPI.registerFarmer(item.data);
+      // Update local record with server ID
+      if (item.local_id) {
+        await this.db.farmers
+          .where('local_id')
+          .equals(item.local_id)
+          .modify({ 
+            id: result.id, 
+            sync_status: 'synced',
+            local_id: undefined
+          });
+      }
+      break;
+  }
+}
+```

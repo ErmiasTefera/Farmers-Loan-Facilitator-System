@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useAuthStore } from '@/core/store/authStore';
+import { useImpersonation } from '@/core/hooks/useImpersonation';
 import { farmerAPI } from '@/features/farmer/farmer.api';
 import { LoanSummary, EmptyLoanSummary, PaymentHistory } from '@/components/shared';
 import type { PaymentData, LoanSummaryData } from '@/components/shared';
@@ -26,18 +27,37 @@ interface DashboardData {
 
 export const FarmerDashboard: React.FC = () => {
   const { user } = useAuthStore();
+  const { getEffectiveUser } = useImpersonation();
   const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const loadDashboardData = async () => {
-      if (!user?.id) return;
+      const effectiveUser = getEffectiveUser();
+      if (!effectiveUser?.id) return;
 
       try {
         setLoading(true);
-        const data = await farmerAPI.getDashboardData(user.id);
+        // Use effective user ID and entity ID (impersonated or actual)
+        // If no entity_id, use the user ID as fallback (for non-impersonated users)
+        const entityId = effectiveUser.entity_id || effectiveUser.id;
+        const data = await farmerAPI.getDashboardData(entityId);
+        // Transform LoanApplication to LoanSummaryData format
+        const transformedActiveLoan = data.activeLoan ? {
+          id: data.activeLoan.id,
+          application_id: data.activeLoan.application_id,
+          amount: data.activeLoan.amount,
+          remaining: undefined, // Will be calculated by LoanSummary component
+          nextPayment: undefined, // TODO: Calculate next payment
+          dueDate: data.activeLoan.application_date, // Use application date as fallback
+          status: data.activeLoan.status,
+          purpose: data.activeLoan.purpose,
+          payments: data.activeLoan.payments
+        } : undefined;
+
         setDashboardData({
           ...data,
+          activeLoan: transformedActiveLoan,
           recentPayments: data.recentPayments.map(payment => ({
             id: payment.id,
             amount: payment.amount,

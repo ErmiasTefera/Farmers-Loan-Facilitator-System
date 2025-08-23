@@ -17,6 +17,7 @@ import {
   Info,
   ArrowRight
 } from 'lucide-react';
+import { useImpersonation } from '@/core/hooks/useImpersonation';
 
 interface EligibilityFormData {
   monthlyIncome: number;
@@ -58,6 +59,7 @@ export const CheckEligibility: React.FC = () => {
   const [result, setResult] = useState<EligibilityResult | null>(null);
   const [isChecking, setIsChecking] = useState(false);
   const [, setShowForm] = useState(true);
+  const { getEffectiveUser } = useImpersonation();
 
   // Load farmer profile on component mount
   useEffect(() => {
@@ -66,7 +68,10 @@ export const CheckEligibility: React.FC = () => {
 
       try {
         setLoading(true);
-        const profile = await farmerAPI.getFarmerProfile(user.id);
+        const effectiveUser = getEffectiveUser();
+        if (!effectiveUser?.id) return;
+        const entityId = effectiveUser.entity_id || effectiveUser.id;
+        const profile = await farmerAPI.getFarmerProfile(entityId);
         setFarmerProfile(profile);
         
         // Pre-populate form with existing data
@@ -86,7 +91,7 @@ export const CheckEligibility: React.FC = () => {
     };
 
     loadFarmerProfile();
-  }, [user?.id]);
+  }, [user]);
 
   const handleInputChange = (field: keyof EligibilityFormData, value: any) => {
     setFormData(prev => ({
@@ -101,7 +106,10 @@ export const CheckEligibility: React.FC = () => {
     try {
       // Try to get real eligibility from API
       if (user?.id) {
-        const eligibilityResponse = await farmerAPI.checkEligibility(user.id);
+        const effectiveUser = getEffectiveUser();
+        if (!effectiveUser?.id) return;
+        const entityId = effectiveUser.entity_id || effectiveUser.id;
+        const eligibilityResponse = await farmerAPI.checkEligibility(entityId);
         
         // Convert API response to our expected format
         const eligibilityResult: EligibilityResult = {

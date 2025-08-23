@@ -11,6 +11,7 @@ import {
   ArrowLeft, 
   Send
 } from 'lucide-react';
+import { useImpersonation } from '@/core/hooks/useImpersonation';
 
 // USSD Menu Types
 interface USSDMenuItem {
@@ -44,6 +45,8 @@ export const USSDSimulator: React.FC = () => {
     isLoading: false
   });
   const [sessionId] = useState(() => `ussd_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`);
+
+  const { getEffectiveUser } = useImpersonation();
 
   // Function to save USSD request to Supabase
   const saveUSSDRequest = async (
@@ -467,7 +470,9 @@ export const USSDSimulator: React.FC = () => {
 
       // Create real payment in Supabase
       const payment = await farmerAPI.createPayment({
-        loan_id: activeLoan.id,
+        loan_id: activeLoan.loan_id || activeLoan.id, // Use loan_id if available, otherwise use application id
+        loan_application_id: activeLoan.id, // Link to the loan application
+        farmer_id: user!.farmer_id || user!.id, // Use farmer_id or fallback to user ID
         amount: parseInt(amount),
         payment_date: new Date().toISOString(),
         payment_method: 'ussd',
@@ -535,7 +540,10 @@ export const USSDSimulator: React.FC = () => {
 
     try {
       // Get real loan history from Supabase
-      const loanApplications = await farmerAPI.getLoanApplicationsByFarmer(user!.id);
+      const effectiveUser = getEffectiveUser();
+      if (!effectiveUser?.id) return;
+      const entityId = effectiveUser.entity_id || effectiveUser.id;
+      const loanApplications = await farmerAPI.getLoanApplicationsByFarmer(entityId);
       
       const historyResult = {
         loans: loanApplications.map(app => ({
@@ -601,7 +609,10 @@ export const USSDSimulator: React.FC = () => {
 
     try {
       // Get real loan details from Supabase
-      const loanApplications = await farmerAPI.getLoanApplicationsByFarmer(user!.id);
+      const effectiveUser = getEffectiveUser();
+      if (!effectiveUser?.id) return;
+      const entityId = effectiveUser.entity_id || effectiveUser.id;
+      const loanApplications = await farmerAPI.getLoanApplicationsByFarmer(entityId);
       const activeLoan = loanApplications.find(app => app.status === 'approved');
       
       if (!activeLoan) {

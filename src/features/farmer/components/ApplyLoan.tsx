@@ -22,6 +22,7 @@ import {
   Clock,
   Info
 } from 'lucide-react';
+import { useImpersonation } from '@/core/hooks/useImpersonation';
 
 interface LoanFormData {
   amount: number;
@@ -102,14 +103,24 @@ export const ApplyLoan: React.FC = () => {
     cropType: ''
   });
 
+  const { getEffectiveUser } = useImpersonation();
+
   // Load farmer profile on component mount
   useEffect(() => {
     const loadFarmerProfile = async () => {
       if (!user?.id) return;
 
+      const effectiveUser = getEffectiveUser();
+      if (!effectiveUser?.id) return;
+
+  // Use effective user ID and entity ID (impersonated or actual)
+  // If no entity_id, use the user ID as fallback (for non-impersonated users)
+  const entityId = effectiveUser.entity_id || effectiveUser.id;
+  
+
       try {
         setLoading(true);
-        const profile = await farmerAPI.getFarmerProfile(user.id);
+        const profile = await farmerAPI.getFarmerProfile(entityId);
         setFarmerProfile(profile);
         
         // Pre-populate form with existing data
@@ -128,7 +139,7 @@ export const ApplyLoan: React.FC = () => {
     };
 
     loadFarmerProfile();
-  }, [user?.id]);
+  }, [user]);
 
   const totalSteps = 4;
   const progress = (currentStep / totalSteps) * 100;
@@ -168,10 +179,14 @@ export const ApplyLoan: React.FC = () => {
   const handleSubmit = async () => {
     if (!user?.id || !selectedPurpose) return;
 
+    const effectiveUser = getEffectiveUser();
+    if (!effectiveUser?.id) return;
+    const entityId = effectiveUser.entity_id || effectiveUser.id;
+
     setIsSubmitting(true);
     try {
       const application = await farmerAPI.createLoanApplication({
-        farmer_id: user.id,
+        farmer_id: entityId,
         amount: formData.amount,
         purpose: `${selectedPurpose.title} - ${formData.description}`,
         status: 'pending',

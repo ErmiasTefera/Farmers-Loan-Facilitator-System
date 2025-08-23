@@ -6,6 +6,7 @@ import { userManagementRoutes } from '@features/user-management/user-management.
 import { authRoutes } from '@features/auth/auth.routes';
 import { homeRoutes } from '@features/home/home.routes';
 import { farmerRoutes } from '@features/farmer/farmer.routes';
+import { dataCollectorRoutes } from '@features/data-collector/data-collector.routes';
 
 // Root route
 const rootRoute = createRootRoute({
@@ -18,6 +19,7 @@ rootRoute.addChildren([
 	userManagementRoutes(rootRoute),
 	authRoutes(rootRoute),
 	farmerRoutes(rootRoute),
+	dataCollectorRoutes(rootRoute),
 ]);
 
 const router = createRouter({ routeTree: rootRoute });

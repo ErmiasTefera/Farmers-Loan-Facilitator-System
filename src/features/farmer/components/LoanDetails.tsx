@@ -21,6 +21,7 @@ import {
   CreditCard,
   Receipt
 } from 'lucide-react';
+import { useImpersonation } from '@/core/hooks/useImpersonation';
 
 interface LoanDetailsProps {
   loanId: string;
@@ -54,16 +55,20 @@ export const LoanDetails: React.FC<LoanDetailsProps> = ({ loanId }) => {
   const [payments, setPayments] = useState<Payment[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'overview' | 'payments' | 'documents' | 'timeline'>('overview');
+  const { getEffectiveUser } = useImpersonation();
 
   useEffect(() => {
     const loadLoanDetails = async () => {
       if (!user?.id || !loanId) return;
 
       try {
+        const effectiveUser = getEffectiveUser();
+        if (!effectiveUser?.id) return;
+        const entityId = effectiveUser.entity_id || effectiveUser.id;
         setLoading(true);
         const [loanData, paymentsData] = await Promise.all([
           farmerAPI.getLoanApplicationById(loanId),
-          farmerAPI.getPaymentsByFarmer(user.id)
+          farmerAPI.getPaymentsByFarmer(entityId)
         ]);
 
         setLoan(loanData);

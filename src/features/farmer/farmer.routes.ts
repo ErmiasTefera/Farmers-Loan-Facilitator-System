@@ -1,4 +1,5 @@
 import { createRoute, type AnyRoute } from '@tanstack/react-router';
+import { redirect } from '@tanstack/react-router';
 import FarmerLayout from '@/features/farmer/layouts/farmer.layout';
 import { USSDSimulatorPage } from './pages/ussd-simulator';
 import { FarmerDashboardPage } from './pages/farmer-dashboard';
@@ -13,7 +14,18 @@ export function farmerRoutes(rootRoute: AnyRoute) {
     getParentRoute: () => rootRoute,
     path: 'farmer',
     component: FarmerLayout,
+  });
 
+  // Index route that redirects to dashboard
+  const farmerIndexRoute = createRoute({
+    getParentRoute: () => farmerLayoutRoute,
+    path: '/',
+    beforeLoad: () => {
+      throw redirect({
+        to: '/farmer/dashboard',
+        replace: true,
+      });
+    },
   });
 
   // USSD Simulator route
@@ -59,7 +71,7 @@ export function farmerRoutes(rootRoute: AnyRoute) {
   });
 
   // Add all farmer child routes to the farmer layout route
-  farmerLayoutRoute.addChildren([ussdSimulatorRoute, farmerDashboardRoute, loanListRoute, loanDetailsRoute, applyLoanRoute, checkEligibilityRoute]);
+  farmerLayoutRoute.addChildren([farmerIndexRoute, ussdSimulatorRoute, farmerDashboardRoute, loanListRoute, loanDetailsRoute, applyLoanRoute, checkEligibilityRoute]);
 
   return farmerLayoutRoute;
 }

@@ -7,6 +7,7 @@ export interface Database {
           id: string;
           email: string;
           full_name: string;
+          farmer_id: string;
           role: 'farmer' | 'data-collector' | 'loan-officer' | 'admin';
           phone: string | null;
           created_at: string;
@@ -104,6 +105,7 @@ export interface Database {
           disbursed_at: string | null;
           created_at: string;
           updated_at: string;
+          farmer?: Farmer;
         };
         Insert: {
           id?: string;
@@ -138,6 +140,8 @@ export interface Database {
         Row: {
           id: string;
           loan_id: string;
+          farmer_id: string;
+          loan_application_id?: string;
           amount: number;
           payment_date: string;
           payment_method: string | null;
@@ -145,10 +149,14 @@ export interface Database {
           status: 'pending' | 'completed' | 'failed';
           created_at: string;
           updated_at: string;
+          farmer?: Farmer;
+          loan_application?: LoanApplication;
         };
         Insert: {
           id?: string;
           loan_id: string;
+          farmer_id: string;
+          loan_application_id?: string;
           amount: number;
           payment_date: string;
           payment_method?: string | null;
@@ -160,6 +168,8 @@ export interface Database {
         Update: {
           id?: string;
           loan_id?: string;
+          farmer_id?: string;
+          loan_application_id?: string;
           amount?: number;
           payment_date?: string;
           payment_method?: string | null;
@@ -214,8 +224,11 @@ export interface Database {
           notes?: string;
           application_date: string;
           application_id: string;
+          loan_id?: string;
           created_at: string;
           updated_at: string;
+          farmer?: Farmer;
+          loan?: Loan;
         };
         Insert: {
           id?: string;
@@ -226,6 +239,7 @@ export interface Database {
           notes?: string;
           application_date?: string;
           application_id?: string;
+          loan_id?: string;
           created_at?: string;
           updated_at?: string;
         };
@@ -238,6 +252,7 @@ export interface Database {
           notes?: string;
           application_date?: string;
           application_id?: string;
+          loan_id?: string;
           created_at?: string;
           updated_at?: string;
         };
@@ -266,7 +281,13 @@ export type Farmer = Tables<'farmers'>;
 export type Loan = Tables<'loans'>;
 export type Payment = Tables<'payments'>;
 export type USSDRequest = Tables<'ussd_requests'>;
-export type LoanApplication = Tables<'loan_applications'>;
+export type LoanApplication = Tables<'loan_applications'> & {
+  payments?: Array<{
+    id: string;
+    amount: number;
+    status: string;
+  }>;
+};
 
 // Helper types for database operations
 export type UserRow = User;

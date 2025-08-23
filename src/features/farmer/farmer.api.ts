@@ -1,4 +1,5 @@
 import { supabase } from '@/core/api/supabase-client';
+import { useImpersonationStore } from '@/core/store/impersonationStore';
 import type { 
   USSDRequest, 
   LoanApplication, 
@@ -8,6 +9,14 @@ import type {
   LoanApplicationInsert,
   PaymentInsert
 } from '@/core/types/database.types';
+
+// Helper function to get effective farmer ID (considering impersonation)
+const getEffectiveFarmerId = (): string | null => {
+  const impersonationStore = useImpersonationStore.getState();
+  return impersonationStore.isImpersonating && impersonationStore.impersonatedUser?.entity_id 
+    ? impersonationStore.impersonatedUser.entity_id 
+    : null;
+};
 
 export const farmerAPI = {
   // USSD Request Management
@@ -46,7 +55,7 @@ export const farmerAPI = {
     const { data, error } = await supabase
       .from('loan_applications')
       .insert(application)
-      .select()
+      .select('*, farmer:farmer_id(*)')
       .single();
 
     if (error) {
@@ -57,11 +66,18 @@ export const farmerAPI = {
     return data;
   },
 
-  async getLoanApplicationsByFarmer(farmerId: string): Promise<LoanApplication[]> {
+  async getLoanApplicationsByFarmer(farmerId?: string): Promise<LoanApplication[]> {
+    // Use effective farmer ID (considering impersonation)
+    const effectiveFarmerId = farmerId || getEffectiveFarmerId();
+    
+    if (!effectiveFarmerId) {
+      return [];
+    }
+
     const { data, error } = await supabase
       .from('loan_applications')
-      .select('*')
-      .eq('farmer_id', farmerId)
+      .select('*, farmer:farmer_id(*)')
+      .eq('farmer_id', effectiveFarmerId)
       .order('created_at', { ascending: false });
 
     if (error) {
@@ -75,7 +91,7 @@ export const farmerAPI = {
   async getLoanApplicationById(applicationId: string): Promise<LoanApplication | null> {
     const { data, error } = await supabase
       .from('loan_applications')
-      .select('*')
+      .select('*, farmer:farmer_id(*)')
       .eq('id', applicationId)
       .single();
 
@@ -93,7 +109,7 @@ export const farmerAPI = {
   async getLoanApplicationByApplicationId(applicationId: string): Promise<LoanApplication | null> {
     const { data, error } = await supabase
       .from('loan_applications')
-      .select('*')
+      .select('*, farmer:farmer_id(*)')
       .eq('application_id', applicationId)
       .single();
 
@@ -121,7 +137,7 @@ export const farmerAPI = {
         updated_at: new Date().toISOString()
       })
       .eq('id', applicationId)
-      .select()
+      .select('*, farmer:farmer_id(*)')
       .single();
 
     if (error) {
@@ -137,7 +153,7 @@ export const farmerAPI = {
     const { data, error } = await supabase
       .from('payments')
       .insert(payment)
-      .select()
+      .select('*, farmer:farmer_id(*)')
       .single();
 
     if (error) {
@@ -151,7 +167,7 @@ export const farmerAPI = {
   async getPaymentsByFarmer(farmerId: string): Promise<Payment[]> {
     const { data, error } = await supabase
       .from('payments')
-      .select('*')
+      .select('*, farmer:farmer_id(*)')
       .eq('farmer_id', farmerId)
       .order('created_at', { ascending: false });
 
@@ -164,11 +180,18 @@ export const farmerAPI = {
   },
 
   // Farmer Profile Management
-  async getFarmerProfile(farmerId: string): Promise<FarmerProfile | null> {
+  async getFarmerProfile(farmerId?: string): Promise<FarmerProfile | null> {
+    // Use effective farmer ID (considering impersonation)
+    const effectiveFarmerId = farmerId || getEffectiveFarmerId();
+    
+    if (!effectiveFarmerId) {
+      throw new Error('No farmer ID available');
+    }
+  
     const { data, error } = await supabase
       .from('farmers')
       .select('*')
-      .eq('user_id', farmerId)
+      .eq('id', effectiveFarmerId)
       .single();
 
     if (error) {
@@ -265,10 +288,15 @@ export const farmerAPI = {
 
   // Dashboard Data
   async getDashboardData(farmerId: string): Promise<{
-    activeLoan: any;
+    activeLoan: LoanApplication | null;
     creditScore: number;
     recentPayments: Payment[];
-    notifications: any[];
+    notifications: Array<{
+      id: string;
+      type: string;
+      message: string;
+      urgent: boolean;
+    }>;
   }> {
     try {
       const [payments, loanApplications, eligibility] = await Promise.all([
@@ -277,8 +305,25 @@ export const farmerAPI = {
         this.checkEligibility(farmerId)
       ]);
 
-      // Get active loan
+      console.log('payments', payments);
+      console.log('loanApplications', loanApplications);
+      console.log('eligibility', eligibility);
+      // Get active loan and include payments
       const activeLoan = loanApplications.find(app => app.status === 'approved') || null;
+      
+      // If there's an active loan, get its payments
+      if (activeLoan) {
+        // Try to get payments by loan_application_id first, then fallback to loan_id
+        const loanPayments = payments.filter(payment => 
+          payment.loan_application_id === activeLoan.id || 
+          (activeLoan.loan_id && payment.loan_id === activeLoan.loan_id)
+        );
+        activeLoan.payments = loanPayments.map(payment => ({
+          id: payment.id,
+          amount: payment.amount,
+          status: payment.status
+        }));
+      }
 
       // Get recent payments (last 5)
       const recentPayments = payments.slice(0, 5);

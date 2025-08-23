@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { 
@@ -30,12 +31,15 @@ interface PaymentHistoryProps {
 
 export const PaymentHistory: React.FC<PaymentHistoryProps> = ({ 
   payments,
-  title = "Recent Payments",
+  title,
   maxItems = 5,
   showMethod = true,
   showReference = false,
   className = ""
 }) => {
+  const { t } = useTranslation();
+  const displayTitle = title || t('common.payment_history');
+  
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', {
       year: 'numeric',
@@ -60,13 +64,13 @@ export const PaymentHistory: React.FC<PaymentHistoryProps> = ({
   const getPaymentStatusBadge = (status: PaymentData['status']) => {
     switch (status) {
       case 'completed':
-        return <Badge className="bg-green-100 text-green-800 border-green-200">Completed</Badge>;
+        return <Badge className="bg-green-100 text-green-800 border-green-200">{t('common.paymentStatus.completed')}</Badge>;
       case 'pending':
-        return <Badge className="bg-yellow-100 text-yellow-800 border-yellow-200">Pending</Badge>;
+        return <Badge className="bg-yellow-100 text-yellow-800 border-yellow-200">{t('common.paymentStatus.pending')}</Badge>;
       case 'failed':
-        return <Badge variant="destructive" className="bg-red-100 text-red-800 border-red-200">Failed</Badge>;
+        return <Badge variant="destructive" className="bg-red-100 text-red-800 border-red-200">{t('common.paymentStatus.failed')}</Badge>;
       default:
-        return <Badge variant="secondary">Unknown</Badge>;
+        return <Badge variant="secondary">{t('common.paymentStatus.unknown')}</Badge>;
     }
   };
 
@@ -76,14 +80,14 @@ export const PaymentHistory: React.FC<PaymentHistoryProps> = ({
     return (
       <Card className={className}>
         <CardHeader>
-          <CardTitle className="flex items-center space-x-2">
-            <DollarSign className="w-5 h-5 text-blue-600" />
-            <span>{title}</span>
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="text-center py-8">
-          <CreditCard className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-          <p className="text-gray-600">No payment history available</p>
+                  <CardTitle className="flex items-center space-x-2">
+          <DollarSign className="w-5 h-5 text-blue-600" />
+          <span>{displayTitle}</span>
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="text-center py-8">
+        <CreditCard className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+        <p className="text-gray-600">{t('common.noPaymentHistory')}</p>
         </CardContent>
       </Card>
     );
@@ -94,9 +98,9 @@ export const PaymentHistory: React.FC<PaymentHistoryProps> = ({
       <CardHeader>
         <CardTitle className="flex items-center space-x-2">
           <DollarSign className="w-5 h-5 text-blue-600" />
-          <span>{title}</span>
+          <span>{displayTitle}</span>
           <Badge variant="outline" className="ml-auto">
-            {payments.length} payment{payments.length !== 1 ? 's' : ''}
+            {payments.length} {payments.length !== 1 ? t('common.payments') : t('common.payment')}
           </Badge>
         </CardTitle>
       </CardHeader>
