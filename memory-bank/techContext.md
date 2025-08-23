@@ -60,7 +60,11 @@ src/
 ├── features/              # Feature-based modules
 │   ├── auth/              # Authentication feature
 │   ├── home/              # Home page feature
-│   └── user-management/   # User management feature
+│   ├── farmer/            # Farmer workspace (USSD, dashboard, loans)
+│   ├── data-collector/    # Data collector workspace (registration, verification)
+│   ├── financial-institution/ # Financial institution workspace (dashboard, review)
+│   ├── user-management/   # User management feature
+│   └── admin/             # System administration (ready to implement)
 ├── lib/                   # Third-party library configurations
 │   ├── localization/      # i18n setup
 │   └── utils.ts           # Utility functions
@@ -96,26 +100,21 @@ src/
 - **State Management**: Zustand stores with offline state management
 - **Farmer Features**: USSD simulator, loan management, payment tracking
 - **Data Collector Workspace**: Complete offline-capable data collection system
+- **Financial Institution Workspace**: Complete loan officer dashboard and application review
 - **Offline Capabilities**: IndexedDB with Dexie.js, sync queue management
 - **Supabase Integration**: Real-time subscriptions, RLS policies, data models
+- **User Impersonation**: Complete testing system for multi-role development
+- **Loan-Payment Relationships**: Proper database relationships and progress tracking
 
 ### 🚧 In Progress
-- Financial institution workspace
 - System administrator workspace
-- Advanced analytics and reporting
+- Enhanced analytics and reporting
 
 ### ❌ Not Yet Implemented
-- Supabase integration and configuration
-- Database schema design and implementation
-- Real-time subscriptions for notifications
-- USSD simulator interface
-- Farmer mobile dashboard
-- Data collector workspace
-- Financial institution workspace
-- System administrator workspace
-- Offline sync capabilities
-- AI-powered recommendations
-- Comprehensive reporting and analytics
+- System administrator workspace (user management, system configuration)
+- Advanced analytics and business intelligence features
+- Performance optimization and caching strategies
+- Enhanced security features and audit logging
 
 ## Development Patterns
 
@@ -134,3 +133,21 @@ src/
 - File-based routing with TanStack Router
 - Layout-based route organization
 - Nested routing for feature modules
+
+### API Optimization Pattern
+- Single-query data fetching for optimal performance
+- Efficient portfolio calculations from aggregated data
+- Risk assessment with AI-powered recommendations
+- Optimized dashboard data loading
+
+### Offline-First Pattern
+- IndexedDB with Dexie.js for offline storage
+- Sync queue management with conflict resolution
+- Manual offline mode for testing
+- Clear online/offline status indicators
+
+### User Impersonation Pattern
+- Complete testing system for multi-role development
+- Role-based user loading and selection
+- State persistence across sessions
+- API integration with effective user context

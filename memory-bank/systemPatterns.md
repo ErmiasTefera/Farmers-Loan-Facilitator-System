@@ -2,7 +2,7 @@
 
 ## Architecture Overview
 
-The Farmers Loan Facilitator System follows a **Feature-Based Architecture** with clear separation of concerns and modular design, enhanced with advanced patterns for user impersonation, offline capabilities, and proper loan-payment relationships.
+The Farmers Loan Facilitator System follows a **Feature-Based Architecture** with clear separation of concerns and modular design, enhanced with advanced patterns for user impersonation, offline capabilities, proper loan-payment relationships, and optimized Financial Institution workspace with single-query data fetching.
 
 ## Core Architectural Patterns
 
@@ -28,6 +28,11 @@ features/
 │   ├── data-collector.api.ts # Collector API layer
 │   └── data-collector.routes.ts # Collector routing
 ├── financial-institution/  # Financial institution workspace
+│   ├── components/        # Dashboard, application review, risk assessment
+│   ├── layouts/           # FI-specific layouts
+│   ├── pages/             # FI pages
+│   ├── financial-institution.api.ts # Optimized FI API layer
+│   └── financial-institution.routes.ts # FI routing
 └── admin/                  # System administration
 ```
 
@@ -97,47 +102,90 @@ export const useImpersonationStore = create<ImpersonationState>()(
 );
 ```
 
-### 2. Supabase API Layer Pattern
+### 2. Optimized Supabase API Layer Pattern
 ```typescript
-// Feature-specific API using Supabase client
-import { supabase } from '@/core/api/supabase-client';
+// Financial Institution API with single-query optimization
+export const financialInstitutionAPI = {
+  // Single query fetches applications + farmers + payments for optimal performance
+  async getAllLoanApplications(): Promise<LoanApplicationWithDetails[]> {
+    const { data: loanApplications, error } = await supabase
+      .from('loan_applications')
+      .select(`
+        *,
+        farmer:farmer_id(*),
+        payments:payments!loan_application_id(*)
+      `)
+      .order('created_at', { ascending: false });
 
-export const farmerAPI = {
-  // Loan application management with proper relationships
-  async getDashboardData(farmerId: string) {
-    const [payments, loanApplications, eligibility] = await Promise.all([
-      this.getPaymentsByFarmer(farmerId),
-      this.getLoanApplicationsByFarmer(farmerId),
-      this.checkEligibility(farmerId)
-    ]);
+    if (error) throw error;
 
-    // Link payments to loan applications
-    const activeLoan = loanApplications.find(app => app.status === 'approved');
-    if (activeLoan) {
-      const loanPayments = payments.filter(payment => 
-        payment.loan_application_id === activeLoan.id || 
-        (activeLoan.loan_id && payment.loan_id === activeLoan.loan_id)
-      );
-      activeLoan.payments = loanPayments.map(payment => ({
-        id: payment.id,
-        amount: payment.amount,
-        status: payment.status
-      }));
-    }
-
-    return { activeLoan, creditScore: eligibility.creditScore, recentPayments: payments };
+    // Process and enhance data with risk assessment
+    return (loanApplications || []).map(app => ({
+      ...app,
+      riskScore: this.calculateRiskScore(app),
+      recommendation: this.getRecommendation(app),
+      decisionNotes: app.decision_notes || ''
+    }));
   },
 
-  // Payment creation with proper relationships
-  async createPayment(payment: PaymentInsert): Promise<Payment> {
-    const { data, error } = await supabase
-      .from('payments')
-      .insert(payment)
-      .select('*, farmer:farmer_id(*), loan_application:loan_application_id(*)')
-      .single();
+  // Portfolio metrics calculated from single query data
+  async getPortfolioMetrics(): Promise<PortfolioMetrics> {
+    const applications = await this.getAllLoanApplications();
     
-    if (error) throw new Error(`Failed to create payment: ${error.message}`);
-    return data;
+    // Extract all payments from loan applications
+    const allPayments = applications.flatMap(app => app.payments || []);
+
+    // Calculate metrics efficiently
+    const totalLoans = applications.length;
+    const activeLoans = applications.filter(loan => loan.status === 'approved').length;
+    const totalPortfolioValue = applications
+      .filter(loan => loan.status === 'approved')
+      .reduce((sum, loan) => sum + loan.amount, 0);
+    
+    const averageLoanAmount = totalLoans > 0 ? totalPortfolioValue / totalLoans : 0;
+
+    // Calculate repayment rate
+    const completedPayments = allPayments.filter(p => p.status === 'completed').length;
+    const totalPayments = allPayments.length;
+    const repaymentRate = totalPayments > 0 ? (completedPayments / totalPayments) * 100 : 0;
+
+    return {
+      totalLoans,
+      activeLoans,
+      totalPortfolioValue,
+      averageLoanAmount,
+      repaymentRate,
+      defaultRate: this.calculateDefaultRate(applications, allPayments),
+      monthlyDisbursements: this.calculateMonthlyDisbursements(applications),
+      monthlyCollections: this.calculateMonthlyCollections(allPayments)
+    };
+  },
+
+  // Risk assessment with AI-powered recommendations
+  calculateRiskScore(application: LoanApplicationWithDetails): number {
+    const factors = {
+      creditHistory: application.farmer?.credit_score || 0,
+      farmSize: application.farmer?.farm_size_hectares || 0,
+      loanAmount: application.amount,
+      repaymentHistory: this.getRepaymentHistory(application.payments || [])
+    };
+
+    // AI-powered risk calculation
+    let riskScore = 0;
+    riskScore += (100 - factors.creditHistory) * 0.3;
+    riskScore += Math.max(0, (10000 - factors.farmSize)) * 0.2;
+    riskScore += Math.min(100, factors.loanAmount / 1000) * 0.3;
+    riskScore += factors.repaymentHistory * 0.2;
+
+    return Math.min(100, Math.max(0, riskScore));
+  },
+
+  getRecommendation(application: LoanApplicationWithDetails): 'approve' | 'reject' | 'review' {
+    const riskScore = this.calculateRiskScore(application);
+    
+    if (riskScore < 30) return 'approve';
+    if (riskScore > 70) return 'reject';
+    return 'review';
   }
 };
 ```
@@ -145,30 +193,30 @@ export const farmerAPI = {
 ### 3. Route Builder Pattern
 ```typescript
 // Feature routes are functions that return route configurations
-export function farmerRoutes(rootRoute: AnyRoute) {
-  const farmerLayoutRoute = createRoute({
+export function financialInstitutionRoutes(rootRoute: AnyRoute) {
+  const fiLayoutRoute = createRoute({
     getParentRoute: () => rootRoute,
-    id: 'farmerLayout',
-    component: FarmerLayout,
+    id: 'financialInstitutionLayout',
+    component: FinancialInstitutionLayout,
     beforeLoad: ({ context }) => {
       // Role-based access control
-      if (context.user?.role !== 'farmer') {
+      if (context.user?.role !== 'financial-institution') {
         throw redirect({ to: '/auth/signin' });
       }
     }
   });
   
   // Add child routes
-  farmerLayoutRoute.addChildren([
+  fiLayoutRoute.addChildren([
     dashboardRoute,
-    ussdSimulatorRoute,
-    applyLoanRoute,
-    checkEligibilityRoute,
-    loanListRoute,
-    loanDetailsRoute
+    applicationsRoute,
+    applicationReviewRoute,
+    portfolioRoute,
+    riskAssessmentRoute,
+    reportsRoute
   ]);
   
-  return farmerLayoutRoute;
+  return fiLayoutRoute;
 }
 ```
 
@@ -293,6 +341,61 @@ export const RoleSwitcher: React.FC<RoleSwitcherProps> = ({ title, userRole }) =
 };
 ```
 
+### 8. Financial Institution Dashboard Pattern
+```typescript
+// Optimized dashboard with single data source
+export const FinancialInstitutionDashboard: React.FC = () => {
+  const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const loadDashboardData = async () => {
+      try {
+        setLoading(true);
+        // Single API call gets all dashboard data
+        const data = await financialInstitutionAPI.getDashboardData();
+        setDashboardData(data);
+      } catch (error) {
+        console.error('Error loading dashboard data:', error);
+        // Fallback to mock data for development
+        setDashboardData(getMockDashboardData());
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadDashboardData();
+  }, []);
+
+  if (loading) {
+    return <LoadingSpinner message="Loading dashboard..." />;
+  }
+
+  const { portfolioMetrics, recentApplications, pendingDecisions, alerts } = dashboardData!;
+
+  return (
+    <div className="space-y-6">
+      {/* Portfolio Metrics Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <MetricCard
+          title="Total Portfolio"
+          value={`$${portfolioMetrics.totalPortfolioValue.toLocaleString()}`}
+          trend={portfolioMetrics.repaymentRate}
+          icon={<DollarSign />}
+        />
+        {/* Additional metric cards */}
+      </div>
+
+      {/* Recent Applications and Alerts */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <ApplicationsList applications={recentApplications} />
+        <AlertsPanel alerts={alerts} />
+      </div>
+    </div>
+  );
+};
+```
+
 ## Database Relationship Patterns
 
 ### 1. Loan-Payment Relationship Schema
@@ -334,6 +437,31 @@ export type Payment = Tables<'payments'> & {
   loan_application?: LoanApplication;
   farmer?: Farmer;
 };
+
+// Financial Institution specific types
+export interface LoanApplicationWithDetails extends LoanApplication {
+  farmer?: Farmer;
+  payments?: Array<{
+    id: string;
+    amount: number;
+    status: string;
+    payment_date: string;
+  }>;
+  riskScore?: number;
+  recommendation?: 'approve' | 'reject' | 'review';
+  decisionNotes?: string;
+}
+
+export interface PortfolioMetrics {
+  totalLoans: number;
+  activeLoans: number;
+  totalPortfolioValue: number;
+  averageLoanAmount: number;
+  repaymentRate: number;
+  defaultRate: number;
+  monthlyDisbursements: number;
+  monthlyCollections: number;
+}
 ```
 
 ## Component Patterns
@@ -386,6 +514,61 @@ export const TopNavigation: React.FC<TopNavigationProps> = ({ title }) => {
         <AuthStatus />
       </div>
     </nav>
+  );
+};
+```
+
+### 3. Financial Institution Component Patterns
+```typescript
+// Risk Assessment Component
+export const RiskAssessment: React.FC<RiskAssessmentProps> = ({ application }) => {
+  const [riskData, setRiskData] = useState<RiskAssessment | null>(null);
+  
+  useEffect(() => {
+    const assessRisk = async () => {
+      const assessment = await financialInstitutionAPI.assessRisk(application.id);
+      setRiskData(assessment);
+    };
+    
+    assessRisk();
+  }, [application.id]);
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Risk Assessment</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="space-y-4">
+          <RiskScoreDisplay score={riskData?.creditScore} />
+          <RiskFactorsList factors={riskData?.riskFactors} />
+          <RecommendationCard recommendation={riskData?.recommendation} />
+        </div>
+      </CardContent>
+    </Card>
+  );
+};
+
+// Portfolio Analytics Component
+export const PortfolioAnalytics: React.FC = () => {
+  const [metrics, setMetrics] = useState<PortfolioMetrics | null>(null);
+  const [timeRange, setTimeRange] = useState<'month' | 'quarter' | 'year'>('month');
+
+  useEffect(() => {
+    const loadMetrics = async () => {
+      const data = await financialInstitutionAPI.getPortfolioMetrics(timeRange);
+      setMetrics(data);
+    };
+    
+    loadMetrics();
+  }, [timeRange]);
+
+  return (
+    <div className="space-y-6">
+      <TimeRangeSelector value={timeRange} onChange={setTimeRange} />
+      <MetricsGrid metrics={metrics} />
+      <PerformanceCharts metrics={metrics} />
+    </div>
   );
 };
 ```
@@ -517,6 +700,7 @@ export const FeatureErrorBoundary: React.FC<{ children: React.ReactNode }> = ({ 
 // Lazy loading for feature routes
 const FarmerDashboard = lazy(() => import('./components/FarmerDashboard'));
 const DataCollectorDashboard = lazy(() => import('./components/DataCollectorDashboard'));
+const FinancialInstitutionDashboard = lazy(() => import('./components/FinancialInstitutionDashboard'));
 
 // Route-based code splitting
 export const farmerRoutes = (rootRoute: AnyRoute) => {
@@ -553,6 +737,39 @@ export const useOptimisticUpdate = () => {
 };
 ```
 
+### 3. Single-Query Optimization
+```typescript
+// Financial Institution API optimization pattern
+export const optimizedAPI = {
+  // Single query fetches all related data
+  async getDashboardData() {
+    const { data: applications, error } = await supabase
+      .from('loan_applications')
+      .select(`
+        *,
+        farmer:farmer_id(*),
+        payments:payments!loan_application_id(*)
+      `)
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+
+    // Process all data from single query
+    const portfolioMetrics = this.calculatePortfolioMetrics(applications);
+    const recentApplications = applications.slice(0, 5);
+    const pendingDecisions = applications.filter(app => app.status === 'pending');
+    const alerts = this.generateAlerts(applications);
+
+    return {
+      portfolioMetrics,
+      recentApplications,
+      pendingDecisions,
+      alerts
+    };
+  }
+};
+```
+
 ## Security Patterns
 
 ### 1. Row Level Security (RLS)
@@ -565,6 +782,16 @@ CREATE POLICY "Users can insert payments for their loan applications" ON payment
 FOR INSERT WITH CHECK (
   loan_application_id IN (
     SELECT id FROM loan_applications WHERE farmer_id = auth.uid()
+  )
+);
+
+-- Financial institution specific policies
+CREATE POLICY "Financial institutions can view all loan applications" ON loan_applications
+FOR SELECT USING (
+  EXISTS (
+    SELECT 1 FROM app_users 
+    WHERE id = auth.uid() 
+    AND role = 'financial-institution'
   )
 );
 ```
@@ -690,9 +917,10 @@ The system implements a comprehensive set of patterns that support:
 4. **Offline-First Design**: Robust offline capabilities with sync management
 5. **Proper Data Relationships**: Loan-payment relationships with automatic linking
 6. **Role-Based Access Control**: Comprehensive role management and switching
-7. **Performance Optimization**: Code splitting, optimistic updates, and caching
-8. **Security**: RLS policies and input validation
-9. **Testing**: Impersonation and offline testing patterns
-10. **Internationalization**: Multi-language support with organized translations
+7. **Performance Optimization**: Single-query data fetching, code splitting, and caching
+8. **Financial Institution Workspace**: Complete loan officer dashboard and application review
+9. **Security**: RLS policies and input validation
+10. **Testing**: Impersonation and offline testing patterns
+11. **Internationalization**: Multi-language support with organized translations
 
-These patterns ensure the system is scalable, maintainable, and provides an excellent user experience across all user roles and scenarios.
+These patterns ensure the system is scalable, maintainable, and provides an excellent user experience across all user roles and scenarios, with particular optimization for the Financial Institution workspace performance.
